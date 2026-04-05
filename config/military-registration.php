@@ -1,0 +1,90 @@
+<?php
+
+return [
+    'family_situations' => [
+        'Single',
+        'Married',
+        'Other',
+    ],
+
+    'family_situation_labels' => [
+        'Single' => 'នៅលីវ',
+        'Married' => 'រៀបការ',
+        'Other' => 'ផ្សេងៗ',
+    ],
+
+    'genders' => [
+        'Male',
+        'Female',
+        'Other',
+    ],
+
+    'gender_labels' => [
+        'Male' => 'ប្រុស',
+        'Female' => 'ស្រី',
+        'Other' => 'ផ្សេងៗ',
+    ],
+
+    'application_statuses' => [
+        'Pending',
+        'Reviewed',
+        'Approved',
+        'Rejected',
+    ],
+
+    'provinces' => [
+        'Banteay Meanchey',
+        'Battambang',
+        'Kampong Cham',
+        'Kampong Chhnang',
+        'Kampong Speu',
+        'Kampong Thom',
+        'Kampot',
+        'Kandal',
+        'Kep',
+        'Koh Kong',
+        'Kratie',
+        'Mondulkiri',
+        'Oddar Meanchey',
+        'Pailin',
+        'Phnom Penh',
+        'Preah Sihanouk',
+        'Preah Vihear',
+        'Prey Veng',
+        'Pursat',
+        'Ratanakiri',
+        'Siem Reap',
+        'Stung Treng',
+        'Svay Rieng',
+        'Takeo',
+        'Tbong Khmum',
+    ],
+
+    'province_labels' => [
+        'Banteay Meanchey' => 'បន្ទាយមានជ័យ',
+        'Battambang' => 'បាត់ដំបង',
+        'Kampong Cham' => 'កំពង់ចាម',
+        'Kampong Chhnang' => 'កំពង់ឆ្នាំង',
+        'Kampong Speu' => 'កំពង់ស្ពឺ',
+        'Kampong Thom' => 'កំពង់ធំ',
+        'Kampot' => 'កំពត',
+        'Kandal' => 'កណ្ដាល',
+        'Kep' => 'កែប',
+        'Koh Kong' => 'កោះកុង',
+        'Kratie' => 'ក្រចេះ',
+        'Mondulkiri' => 'មណ្ឌលគិរី',
+        'Oddar Meanchey' => 'ឧត្តរមានជ័យ',
+        'Pailin' => 'ប៉ៃលិន',
+        'Phnom Penh' => 'ភ្នំពេញ',
+        'Preah Sihanouk' => 'ព្រះសីហនុ',
+        'Preah Vihear' => 'ព្រះវិហារ',
+        'Prey Veng' => 'ព្រៃវែង',
+        'Pursat' => 'ពោធិ៍សាត់',
+        'Ratanakiri' => 'រតនគិរី',
+        'Siem Reap' => 'សៀមរាប',
+        'Stung Treng' => 'ស្ទឹងត្រែង',
+        'Svay Rieng' => 'ស្វាយរៀង',
+        'Takeo' => 'តាកែវ',
+        'Tbong Khmum' => 'ត្បូងឃ្មុំ',
+    ],
+];
