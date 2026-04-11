@@ -90,7 +90,7 @@ jobs:
           SESSION_DRIVER: array
           QUEUE_CONNECTION: sync
           CACHE_STORE: array
-        run: php artisan test --parallel --no-interaction
+        run: php artisan test --no-interaction
 
   # ─────────────────────────────────────────────────────────
   #  Job 2: Build Docker image (runs only on main/master)
