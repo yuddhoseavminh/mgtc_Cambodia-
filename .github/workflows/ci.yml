@@ -127,5 +127,5 @@ jobs:
           tags: |
             army-register:latest
             army-register:${{ steps.meta.outputs.tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=gha-v2
+          cache-to: type=gha,scope=gha-v2,mode=max
