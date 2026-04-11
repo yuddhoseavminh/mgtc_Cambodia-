@@ -69,18 +69,24 @@ jobs:
       - name: 🎨 Build Vite assets
         run: npm run build
 
-      - name: 🗄️ Run database migrations (testing DB)
+      - name: 🗄️ Run migrations & seed test data
         env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
           DB_DATABASE: army_db_testing
           DB_USERNAME: army_user
           DB_PASSWORD: army_secret
-        run: php artisan migrate --force --no-interaction
+        run: |
+          php artisan migrate --force
+          php artisan db:seed --force
 
       - name: 🧪 Run PHPUnit tests
         env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
