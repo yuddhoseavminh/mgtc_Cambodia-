@@ -46,15 +46,16 @@ class AdminAuthController extends Controller
         $credentials = $request->validate([
             'email' => ['nullable', 'string'],
             'login' => ['nullable', 'string'],
+            'username' => ['nullable', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        $login = trim((string) ($credentials['login'] ?? $credentials['email'] ?? ''));
+        $login = trim((string) ($credentials['login'] ?? $credentials['email'] ?? $credentials['username'] ?? ''));
         $password = $credentials['password'];
 
         if ($login === '') {
             throw ValidationException::withMessages([
-                'email' => 'Username or email is required.',
+                'email' => 'Email, login ID, or username is required.',
             ]);
         }
 
@@ -68,7 +69,7 @@ class AdminAuthController extends Controller
 
         if (! $authenticated) {
             throw ValidationException::withMessages([
-                'email' => 'Username/email or password is incorrect.',
+                'email' => 'Email/login ID/username or password is incorrect.',
             ]);
         }
 

@@ -49,7 +49,7 @@
                             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"></path>
                         </svg>
                     </span>
-                    <h2 class="public-home-card-title">ចុះឈ្មោះវគ្គសិក្សា</h2>
+                    <h2 class="public-home-card-title">ចុះឈ្មោះវគ្គសិក្សាសិក្ខាកាម</h2>
                     <p class="public-home-card-text">បំពេញទម្រង់សម្រាប់ចុះឈ្មោះវគ្គសិក្សា ដោយប្រើទិន្នន័យ និងឯកសារភ្ជាប់ដែលតម្រូវដោយរដ្ឋបាល។</p>
                     <span class="public-home-card-link">
                         បើកទម្រង់ចុះឈ្មោះ
@@ -68,9 +68,29 @@
                         </svg>
                     </span>
                     <h2 class="public-home-card-title">ចុះឈ្មោះបុគ្គលិកសាកល្បង</h2>
-                    <p class="public-home-card-text">បំពេញព័ត៌មានបុគ្គលិកសាកល្បង ជាមួយរូបថត អាយុ និងឯកសារដែលបានកំណត់ពីផ្នែករដ្ឋបាល Catalog 3។</p>
+                    <p class="public-home-card-text">បំពេញព័ត៌មានបុគ្គលិកសាកល្បង ជាមួយរូបថត អាយុ និងឯកសារដែលបានកំណត់ពីផ្នែករដ្ឋបាល ។</p>
                     <span class="public-home-card-link">
                         បើកទម្រង់បុគ្គលិកសាកល្បង
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14"></path>
+                            <path d="m13 5 7 7-7 7"></path>
+                        </svg>
+                    </span>
+                </a>
+
+                <a href="{{ route('staff.login') }}" class="public-home-card">
+                    <span class="public-home-card-icon !bg-[linear-gradient(135deg,#fee2e2,#fecaca)] !text-rose-700" aria-hidden="true">
+                        <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+                            <path d="M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path>
+                            <path d="M5 21a7 7 0 0 1 14 0"></path>
+                            <path d="M17 11h4"></path>
+                            <path d="M19 9v4"></path>
+                        </svg>
+                    </span>
+                    <h2 class="public-home-card-title">បុគ្គលិកក្រុមការងារទី៣</h2>
+                    <p class="public-home-card-text">សូមអញ្ជើញបុគ្គលិកក្រុមការងារទី៣ ចូលបំពេញព័ត៌មាន និងឯកសារផ្ទាល់ខ្លួន</p>
+                    <span class="public-home-card-link !text-rose-700">
+                        ចូលប្រព័ន្ធ
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M5 12h14"></path>
                             <path d="m13 5 7 7-7 7"></path>

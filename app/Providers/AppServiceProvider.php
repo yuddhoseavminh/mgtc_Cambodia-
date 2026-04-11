@@ -25,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
     {
         RateLimiter::for('admin-login', function (Request $request) {
             return Limit::perMinute(5)
-                ->by(strtolower($request->input('email', '')).'|'.$request->ip())
+                ->by(strtolower($request->input('email', $request->input('username', ''))).'|'.$request->ip())
                 ->response(function () use ($request) {
                     if ($request->expectsJson()) {
                         return response()->json([

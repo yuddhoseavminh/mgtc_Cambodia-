@@ -20,11 +20,11 @@ use Illuminate\Validation\ValidationException;
 
 class PublicTestTakingStaffRegistrationController extends Controller
 {
-    private const MAX_TOTAL_UPLOAD_BYTES = 41943040;
+    private const MAX_TOTAL_UPLOAD_BYTES = 104857600;
     private const SUCCESS_TITLE = 'ការចុះឈ្មោះជោគជ័យ';
     private const SUCCESS_MESSAGE = 'ការចុះឈ្មោះបុគ្គលិកសាកល្បងបានជោគជ័យ។';
     private const SUCCESS_DESCRIPTION = 'ព័ត៌មានរបស់អ្នកត្រូវបានបញ្ជូនរួចរាល់។ សូមរង់ចាំការត្រួតពិនិត្យពីក្រុមការងារ។';
-    private const TOTAL_UPLOAD_ERROR = 'ទំហំឯកសារសរុបធំពេក។ សូមរក្សាទំហំឯកសារនីមួយៗក្រោម 20 MB និងទំហំសរុបក្រោម 40 MB។';
+    private const TOTAL_UPLOAD_ERROR = 'ទំហំឯកសារសរុបធំពេក។ សូមរក្សាទំហំឯកសារនីមួយៗក្រោម 50 MB និងទំហំសរុបក្រោម 100 MB។';
 
     public function store(Request $request): JsonResponse|Response
     {
@@ -44,7 +44,8 @@ class PublicTestTakingStaffRegistrationController extends Controller
         ];
 
         foreach ($documentRequirements as $documentRequirement) {
-            $rules["document_files.{$documentRequirement->id}"] = ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx,webp', 'max:20480'];
+            $rules["document_files.{$documentRequirement->id}"] = ['nullable', 'array'];
+            $rules["document_files.{$documentRequirement->id}.*"] = ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx,webp', 'max:51200'];
         }
 
         $validated = $request->validate($rules);
@@ -75,17 +76,17 @@ class PublicTestTakingStaffRegistrationController extends Controller
             ]);
 
             $documents = $documentRequirements
-                ->map(function (TestTakingStaffDocumentRequirement $documentRequirement) use ($request, $folder) {
-                    $file = $request->file("document_files.{$documentRequirement->id}");
+                ->flatMap(function (TestTakingStaffDocumentRequirement $documentRequirement) use ($request, $folder) {
+                    $files = $request->file("document_files.{$documentRequirement->id}");
 
-                    if (! $file instanceof UploadedFile) {
-                        return null;
+                    if (! is_array($files)) {
+                        $files = $files instanceof UploadedFile ? [$files] : [];
                     }
 
-                    return [
+                    return collect($files)->map(fn (UploadedFile $file) => [
                         'test_taking_staff_document_requirement_id' => $documentRequirement->id,
                         ...$this->storeDocument($file, $folder, $documentRequirement->slug),
-                    ];
+                    ])->all();
                 })
                 ->filter()
                 ->values()
@@ -192,16 +193,16 @@ class PublicTestTakingStaffRegistrationController extends Controller
             ->implode(', ');
 
         return implode("\n", [
-            'Test-taking staff registration received',
-            'Registration ID: #'.$registration->id,
-            'Name (KH): '.$registration->name_kh,
-            'Name (Latin): '.$registration->name_latin,
-            'Rank: '.($registration->rank?->name_kh ?? $registration->rank?->name_en ?? '-'),
-            'Phone: '.$registration->phone_number,
-            'Date of birth: '.optional($registration->date_of_birth)->format('d/m/Y'),
-            'Military service day: '.optional($registration->military_service_day)->format('d/m/Y'),
-            'Attached documents: '.($documentLabels !== '' ? $documentLabels : 'None'),
-            'Submitted at: '.optional($registration->submitted_at)->timezone('Asia/Phnom_Penh')->format('d/m/Y H:i:s'),
+            'ទទួលបានការចុះឈ្មោះបុគ្គលិកសាកល្បងថ្មី',
+            'លេខសម្គាល់ចុះឈ្មោះ: #'.$registration->id,
+            'ឈ្មោះ (ខ្មែរ): '.$registration->name_kh,
+            'ឈ្មោះ (ឡាតាំង): '.$registration->name_latin,
+            'ឋានន្តរស័ក្តិ: '.($registration->rank?->name_kh ?? $registration->rank?->name_en ?? '-'),
+            'លេខទូរស័ព្ទ: '.$registration->phone_number,
+            'ថ្ងៃខែឆ្នាំកំណើត: '.optional($registration->date_of_birth)->format('d/m/Y'),
+            'ថ្ងៃចូលបម្រើការងារកងទ័ព: '.optional($registration->military_service_day)->format('d/m/Y'),
+            'ឯកសារភ្ជាប់: '.($documentLabels !== '' ? $documentLabels : 'គ្មាន'),
+            'បញ្ជូននៅម៉ោង: '.optional($registration->submitted_at)->timezone('Asia/Phnom_Penh')->format('d/m/Y H:i:s'),
         ]);
     }
 

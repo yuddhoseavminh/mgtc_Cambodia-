@@ -11,12 +11,12 @@
         ],
         [
             'eyebrow' => 'កាតាឡុក ២',
-            'title' => 'ក្រុមបុគ្គលិកទី៣',
-            'description' => 'តាមដានក្រុមអ្នកគ្រប់គ្រង ថ្នាក់ដឹកនាំសកម្ម និងកន្លែងធ្វើការគ្រប់គ្រងបុគ្គលិកខាងក្នុង។',
+            'title' => 'បុគ្គលិកក្រុមការងារទី៣ទី៣',
+            'description' => 'តាមដានក្រុមអ្នកគ្រប់គ្រង ថ្នាក់ដឹកនាំសកម្ម និងកន្លែងធ្វើការគ្រប់គ្រងបុគ្គលិកក្រុមការងារទី៣ខាងក្នុង។',
             'href' => route('admin.home', ['section' => 'staff-team']),
-            'cta' => 'បើកក្រុមបុគ្គលិកទី៣',
+            'cta' => 'បើកបុគ្គលិកក្រុមការងារទី៣ទី៣',
             'gradient' => 'from-[#0f766e] via-[#14b8a6] to-[#7dd3fc]',
-            'items' => ['ក្រុមបុគ្គលិកទី៣', 'គ្រប់គ្រងបុគ្គលិក'],
+            'items' => ['បុគ្គលិកក្រុមការងារទី៣ទី៣', 'គ្រប់គ្រងបុគ្គលិកក្រុមការងារទី៣'],
         ],
         [
             'eyebrow' => 'កាតាឡុក ៣',
@@ -25,7 +25,7 @@
             'href' => route('admin.home', ['section' => 'test-taking-staff']),
             'cta' => 'បើកផ្នែកបុគ្គលិកសាកល្បង',
             'gradient' => 'from-[#7c3aed] via-[#a855f7] to-[#f472b6]',
-            'items' => ['បុគ្គលិកសាកល្បង', 'គ្រប់គ្រងបុគ្គលិកចុះឈ្មោះ'],
+            'items' => ['បុគ្គលិកសាកល្បង', 'គ្រប់គ្រងបុគ្គលិកសាកល្បង'],
         ],
         [
             'eyebrow' => 'កាតាឡុក ៤',
@@ -42,7 +42,7 @@
         ['label' => 'ចំនួនចុះឈ្មោះសរុប', 'value' => $stats['totalApplicants'], 'meta' => 'គ្រប់ពេលវេលា', 'badge' => 'បច្ចុប្បន្ន', 'badgeClass' => 'bg-emerald-100 text-emerald-700'],
         ['label' => 'រង់ចាំអនុម័ត', 'value' => $stats['pendingApplications'], 'meta' => 'ត្រូវពិនិត្យ', 'badge' => 'ជួរ', 'badgeClass' => 'bg-sky-100 text-sky-700'],
         ['label' => 'វគ្គសិក្សាសរុប', 'value' => $stats['totalCourses'], 'meta' => 'កាតាឡុកគ្រប់គ្រង', 'badge' => 'បច្ចុប្បន្ន', 'badgeClass' => 'bg-amber-100 text-amber-700'],
-        ['label' => 'អ្នកគ្រប់គ្រង', 'value' => $stats['adminTeamUsers'], 'meta' => 'ក្រុមបុគ្គលិកទី៣', 'badge' => 'សិទ្ធិ', 'badgeClass' => 'bg-violet-100 text-violet-700'],
+        ['label' => 'អ្នកគ្រប់គ្រង', 'value' => $stats['adminTeamUsers'], 'meta' => 'បុគ្គលិកក្រុមការងារទី៣ទី៣', 'badge' => 'សិទ្ធិ', 'badgeClass' => 'bg-violet-100 text-violet-700'],
         ['label' => 'បុគ្គលិកចុះឈ្មោះ', 'value' => $stats['registerStaffUsers'], 'meta' => 'គណនីប្រតិបត្តិករ', 'badge' => 'ប្រតិបត្តិការ', 'badgeClass' => 'bg-rose-100 text-rose-700'],
         ['label' => 'អ្នកប្រើប្រាស់សរុប', 'value' => $stats['totalUsers'], 'meta' => 'គណនីប្រព័ន្ធ', 'badge' => 'បច្ចុប្បន្ន', 'badgeClass' => 'bg-slate-100 text-slate-700'],
     ];
@@ -203,7 +203,11 @@
         </div>
 
         <div class="mt-6 flex justify-center">
-            <div class="relative h-48 w-48 rounded-full" style="background: conic-gradient({{ $distributionStyle ?: '#356AE6 0% 100%' }});">
+            <div
+                id="rank-donut-chart"
+                class="relative h-48 w-48 rounded-full"
+                data-gradient="{{ $distributionStyle ?: '#356AE6 0% 100%' }}"
+            >
                 <div class="absolute inset-[22px] rounded-full bg-white"></div>
                 <div class="absolute inset-0 flex items-center justify-center">
                     <div class="text-center">
@@ -213,13 +217,19 @@
                 </div>
             </div>
         </div>
+        <script>
+            (function () {
+                var el = document.getElementById('rank-donut-chart');
+                if (el) { el.style.background = 'conic-gradient(' + el.dataset.gradient + ')'; }
+            })();
+        </script>
 
         <div class="mt-6 space-y-3">
             @forelse ($rankDistribution as $rankName => $count)
-                @php $segment = $distributionSegments->values()[$loop->index]; @endphp
+                @php $segment = $distributionSegments->values()->get($loop->index, ['color' => '#94A3B8']); @endphp
                 <div class="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
                     <div class="flex items-center gap-3">
-                        <span class="h-3 w-3 rounded-full" style="background-color: {{ $segment['color'] }}"></span>
+                        <span class="h-3 w-3 rounded-full" data-color="{{ $segment['color'] }}"></span>
                         <span class="text-sm font-semibold text-slate-800">{{ $rankName }}</span>
                     </div>
                     <span class="text-sm font-semibold text-slate-900">{{ $count }}</span>
@@ -228,5 +238,10 @@
                 <p class="text-sm text-slate-500">មិនមានទិន្នន័យការបែងចែកតាមឋានន្តរស័ក្តិទេ។</p>
             @endforelse
         </div>
+        <script>
+            document.querySelectorAll('[data-color]').forEach(function(el) {
+                el.style.backgroundColor = el.dataset.color;
+            });
+        </script>
     </div>
 </section>

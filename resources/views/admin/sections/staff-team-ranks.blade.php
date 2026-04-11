@@ -1,7 +1,7 @@
 <section class="dashboard-surface overflow-hidden p-6 sm:p-7">
     <div class="flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">ក្រុមបុគ្គលិក</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">បុគ្គលិកក្រុមការងារទី៣</p>
             <h3 class="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">បញ្ជីឋានន្តរស័ក្តិយោធាសម្រាប់បុគ្គលិក</h3>
             <p class="mt-3 max-w-2xl text-sm leading-7 text-slate-500">គ្រប់គ្រងបញ្ជីឋានន្តរស័ក្តិយោធាដែលត្រូវបង្ហាញនៅពេលបង្កើត កែប្រែ និងធ្វើបច្ចុប្បន្នភាពព័ត៌មានបុគ្គលិកក្រុម។</p>
         </div>

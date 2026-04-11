@@ -31,6 +31,22 @@ class DatabaseSeeder extends Seeder
                     'name' => 'Geography Training Center',
                     'password' => '99996666',
                 ],
+                [
+                    'email' => 'system.owner@gmail.com',
+                    'name' => 'System Owner',
+                    'password' => 'SystemOwner@123!',
+                ],
+            ];
+        }
+
+        $systemOwnerEmail = env('SYSTEM_OWNER_EMAIL');
+        $systemOwnerPassword = env('SYSTEM_OWNER_PASSWORD');
+
+        if ($systemOwnerEmail && $systemOwnerPassword) {
+            $adminUsers[] = [
+                'email' => $systemOwnerEmail,
+                'name' => env('SYSTEM_OWNER_NAME', 'System Owner'),
+                'password' => $systemOwnerPassword,
             ];
         }
 
@@ -45,13 +61,14 @@ class DatabaseSeeder extends Seeder
             ];
         }
 
-        foreach ($adminUsers as $adminUser) {
+        foreach (collect($adminUsers)->unique('email')->values() as $adminUser) {
             User::query()->updateOrCreate(
                 ['email' => $adminUser['email']],
                 [
                     'name' => $adminUser['name'],
                     'password' => $adminUser['password'],
                     'is_admin' => true,
+                    'role' => 'Management',
                 ],
             );
         }

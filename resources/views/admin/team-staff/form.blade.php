@@ -3,10 +3,28 @@
 @section('body')
     @php
         $isEdit = $mode === 'edit';
+        $roleLabels = [
+            'Admin' => 'អ្នកគ្រប់គ្រង',
+            'Manager' => 'អ្នកចាត់ការ',
+            'Staff' => 'បុគ្គលិក',
+            'Viewer' => 'អ្នកមើល',
+        ];
+        $genderLabels = [
+            'Male' => 'ប្រុស',
+            'Female' => 'ស្រី',
+            'Other' => 'ផ្សេងទៀត',
+        ];
         $existingDocuments = collect($teamStaff->documents ?? [])->values();
-        $oldDocumentLabels = collect(old('documents_labels', []))->values();
-        $documentRows = max(4, $existingDocuments->count(), $oldDocumentLabels->count());
-        $documentTypeOptions = collect($documentTypeSuggestions)->filter()->values();
+        $documentRequirements = collect($documentRequirements ?? [])->values();
+        $documentsByRequirementSlug = $existingDocuments
+            ->filter(fn ($document) => filled($document['requirement_slug'] ?? null))
+            ->keyBy(fn ($document) => $document['requirement_slug']);
+        $legacyDocuments = $existingDocuments
+            ->filter(fn ($document) => blank($document['requirement_slug'] ?? null))
+            ->values();
+        $previewIdNumber = old('id_number', $credentialPreview['password'] ?? $teamStaff->id_number);
+        $previewUsername = $credentialPreview['username']
+            ?? \App\Models\TeamStaff::usernameBase((string) old('name_latin', $teamStaff->name_latin));
     @endphp
 
     <div class="w-full">
@@ -16,8 +34,8 @@
 
                 <main class="flex min-h-full flex-col bg-transparent">
                     @include('admin.partials.topbar', [
-                        'title' => $isEdit ? 'កែប្រែបុគ្គលិកក្រុម' : 'បង្កើតបុគ្គលិកក្រុម',
-                        'subtitle' => 'កាតាឡុក / បុគ្គលិកក្រុម',
+                        'title' => $isEdit ? 'កែប្រែព័ត៌មានបុគ្គលិក' : 'បង្កើតបុគ្គលិកថ្មី',
+                        'subtitle' => 'បញ្ជី / បុគ្គលិកក្រុម',
                         'filters' => ['search' => ''],
                         'pendingNotifications' => 0,
                         'currentSection' => 'staff-management',
@@ -28,17 +46,17 @@
                             <section class="overflow-hidden rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,#ffffff,#f8fbff)] p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)] sm:p-7">
                                 <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                                     <div class="max-w-3xl">
-                                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Staff Catalog</p>
+                                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">បញ្ជីបុគ្គលិក</p>
                                         <h3 class="mt-2 text-[1.85rem] font-semibold tracking-tight text-slate-950">
-                                            {{ $isEdit ? 'កែប្រែព័ត៌មានបុគ្គលិកក្រុម' : 'បង្កើតព័ត៌មានបុគ្គលិកក្រុមថ្មី' }}
+                                            {{ $isEdit ? 'កែប្រែកំណត់ត្រាបុគ្គលិក' : 'បង្កើតកំណត់ត្រាបុគ្គលិកថ្មី' }}
                                         </h3>
                                         <p class="mt-2 text-sm leading-7 text-slate-500">
-                                            បំពេញព័ត៌មានតាមលំដាប់ពីលើចុះក្រោម ដើម្បីឱ្យការបង្កើតបុគ្គលិកថ្មីមានភាពច្បាស់ ស្អាត និងងាយពិនិត្យ។
+                                            ផ្នែកឯកសារនៅទីនេះប្រើតាមបញ្ជីឯកសារដែលអេដមីនបានកំណត់។ ប្រសិនបើមិនទាន់មានឯកសារ វានឹងនៅតែបង្ហាញដើម្បីអាចបញ្ចូលនៅពេលក្រោយ។
                                         </p>
                                     </div>
 
                                     <a href="{{ route('admin.home', ['section' => 'staff-management']) }}" class="inline-flex items-center justify-center rounded-[1.35rem] border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                                        ត្រឡប់ទៅបញ្ជី
+                                        ត្រឡប់ទៅបញ្ជីបុគ្គលិក
                                     </a>
                                 </div>
                             </section>
@@ -51,39 +69,59 @@
                                 data-ajax-form
                                 data-ajax-redirect="{{ route('admin.home', ['section' => 'staff-management']) }}"
                                 data-ajax-success-title="ជោគជ័យ"
-                                data-ajax-success-text="{{ $isEdit ? 'បានកែប្រែបុគ្គលិកដោយជោគជ័យ។' : 'បានបង្កើតបុគ្គលិកដោយជោគជ័យ។' }}"
+                                data-ajax-success-text="{{ $isEdit ? 'បានកែប្រែព័ត៌មានបុគ្គលិកដោយជោគជ័យ។' : 'បានបង្កើតបុគ្គលិកដោយជោគជ័យ។' }}"
                             >
                                 @csrf
                                 @if ($isEdit)
                                     @method('PUT')
                                 @endif
 
+                                <section class="rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,#0f172a,#111827_52%,#7f1d1d)] p-5 text-white shadow-[0_20px_50px_rgba(15,23,42,0.16)] sm:p-6">
+                                    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                        <div class="max-w-2xl">
+                                            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-rose-200">{{ $isEdit ? 'គណនីចូលប្រព័ន្ធ' : 'ការមើលជាមុននៃគណនីចូល' }}</p>
+                                            <h4 class="mt-2 text-2xl font-semibold tracking-tight">{{ $isEdit ? 'ព័ត៌មានចូលប្រើបច្ចុប្បន្ន' : 'គណនីដែលប្រព័ន្ធបង្កើត' }}</h4>
+                                            <p class="mt-2 text-sm leading-7 text-slate-200">
+                                                ឈ្មោះអ្នកប្រើត្រូវគ្នានឹងឈ្មោះឡាតាំង។ លេខសម្ងាត់ដើមគឺលេខសម្គាល់បុគ្គលិក។
+                                            </p>
+                                        </div>
+
+                                        <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[24rem]">
+                                            <div class="rounded-[1.35rem] border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
+                                                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-100">ឈ្មោះអ្នកប្រើ</p>
+                                                <p class="mt-2 break-all text-lg font-semibold text-white" data-credential-username>{{ $previewUsername }}</p>
+                                            </div>
+                                            <div class="rounded-[1.35rem] border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
+                                                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-100">{{ $isEdit ? 'លេខសម្គាល់យោង' : 'លេខសម្ងាត់ដើម' }}</p>
+                                                <p class="mt-2 break-all text-lg font-semibold text-white" data-credential-password>{{ $previewIdNumber }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
                                 <section class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
                                     <section class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_14px_30px_rgba(15,23,42,0.05)] sm:p-7">
                                         <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                             <div>
                                                 <h4 class="text-lg font-semibold text-slate-950">ព័ត៌មានមូលដ្ឋាន</h4>
-                                                <p class="mt-1 text-sm text-slate-500">បំពេញព័ត៌មានសំខាន់ៗរបស់បុគ្គលិកក្នុងប្លង់ grid ដែលងាយមើល និងងាយបញ្ចូល។</p>
+                                                <p class="mt-1 text-sm text-slate-500">សូមបំពេញព័ត៌មានបុគ្គលិកជាមុនសិន មុនពេលបញ្ចូលឯកសារ។</p>
                                             </div>
-                                            <span class="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">Section 01</span>
+                                            <span class="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">ផ្នែក ០១</span>
                                         </div>
 
                                         <div class="grid gap-5 md:grid-cols-2">
                                             <div>
-                                                <div class="mb-2 flex min-h-[2.75rem] items-start justify-between gap-3">
-                                                    <label class="form-label !mb-0">លេខលំដាប់</label>
-                                                    <span class="invisible text-xs font-semibold">.</span>
-                                                </div>
+                                                <label class="form-label">លេខរៀង</label>
                                                 <input type="text" value="{{ old('sequence_no', $teamStaff->sequence_no) }}" class="form-input bg-slate-50" readonly>
                                             </div>
 
                                             <div>
-                                                <div class="mb-2 flex min-h-[2.75rem] flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                                                    <label class="form-label !mb-0">ឋានន្តរស័ក្តិយោធា</label>
-                                                    <a href="{{ route('admin.home', ['section' => 'staff-team-ranks']) }}" class="text-xs font-semibold text-[#356AE6] hover:underline">+ បង្កើតឋានន្តរស័ក្តិបុគ្គលិក</a>
+                                                <div class="mb-2 flex items-center justify-between gap-3">
+                                                    <label class="form-label !mb-0">ឋានន្តរស័ក្តិ</label>
+                                                    <a href="{{ route('admin.home', ['section' => 'staff-team-ranks']) }}" class="text-xs font-semibold text-[#356AE6] hover:underline">គ្រប់គ្រងឋានន្តរស័ក្តិ</a>
                                                 </div>
                                                 <select name="military_rank" class="form-input bg-slate-50 text-slate-700">
-                                                    <option value="">ជ្រើសរើសឋានន្តរស័ក្តិបុគ្គលិក</option>
+                                                    <option value="">ជ្រើសរើសឋានន្តរស័ក្តិ</option>
                                                     @foreach ($rankSuggestions as $rankSuggestion)
                                                         <option value="{{ $rankSuggestion }}" @selected(old('military_rank', $teamStaff->military_rank) === $rankSuggestion)>{{ $rankSuggestion }}</option>
                                                     @endforeach
@@ -92,20 +130,20 @@
                                             </div>
 
                                             <div>
-                                                <label class="form-label">គោត្តនាម-នាម</label>
+                                                <label class="form-label">ឈ្មោះជាភាសាខ្មែរ</label>
                                                 <input type="text" name="name_kh" value="{{ old('name_kh', $teamStaff->name_kh) }}" class="form-input bg-slate-50" placeholder="បញ្ចូលឈ្មោះជាភាសាខ្មែរ">
                                                 @include('partials.field-error', ['name' => 'name_kh'])
                                             </div>
 
                                             <div>
                                                 <label class="form-label">ឈ្មោះឡាតាំង</label>
-                                                <input type="text" name="name_latin" value="{{ old('name_latin', $teamStaff->name_latin) }}" class="form-input bg-slate-50" placeholder="បញ្ចូលឈ្មោះជាអក្សរឡាតាំង">
+                                                <input type="text" name="name_latin" value="{{ old('name_latin', $teamStaff->name_latin) }}" class="form-input bg-slate-50" placeholder="បញ្ចូលឈ្មោះឡាតាំង">
                                                 @include('partials.field-error', ['name' => 'name_latin'])
                                             </div>
 
                                             <div class="md:col-span-2">
-                                                <label class="form-label">អត្តលេខ</label>
-                                                <input type="text" name="id_number" value="{{ old('id_number', $teamStaff->id_number) }}" class="form-input bg-slate-50" placeholder="បញ្ចូលអត្តលេខ">
+                                                <label class="form-label">លេខសម្គាល់បុគ្គលិក</label>
+                                                <input type="text" name="id_number" value="{{ old('id_number', $teamStaff->id_number) }}" class="form-input bg-slate-50" placeholder="បញ្ចូលលេខសម្គាល់បុគ្គលិក">
                                                 @include('partials.field-error', ['name' => 'id_number'])
                                             </div>
 
@@ -114,7 +152,7 @@
                                                 <select name="gender" class="form-input bg-slate-50">
                                                     <option value="">ជ្រើសរើសភេទ</option>
                                                     @foreach ($genderOptions as $genderOption)
-                                                        <option value="{{ $genderOption }}" @selected(old('gender', $teamStaff->gender) === $genderOption)>{{ ['Male' => 'ប្រុស', 'Female' => 'ស្រី', 'Other' => 'ផ្សេងទៀត'][$genderOption] ?? $genderOption }}</option>
+                                                        <option value="{{ $genderOption }}" @selected(old('gender', $teamStaff->gender) === $genderOption)>{{ $genderLabels[$genderOption] ?? $genderOption }}</option>
                                                     @endforeach
                                                 </select>
                                                 @include('partials.field-error', ['name' => 'gender'])
@@ -128,26 +166,54 @@
 
                                             <div>
                                                 <label class="form-label">មុខតំណែង</label>
-                                                <input
-                                                    type="text"
-                                                    name="position"
-                                                    list="position-options"
-                                                    value="{{ old('position', $teamStaff->position) }}"
-                                                    class="form-input bg-slate-50"
-                                                    placeholder="បញ្ចូលមុខតំណែង"
-                                                >
+                                                @php($currentPosition = old('position', $teamStaff->position))
+                                                @php($isCustomPosition = filled($currentPosition) && ! $positionSuggestions->contains($currentPosition))
+                                                <div class="relative">
+                                                    <select 
+                                                        id="position_select" 
+                                                        name="{{ $isCustomPosition ? '' : 'position' }}" 
+                                                        class="form-input bg-slate-50 {{ $isCustomPosition ? 'hidden' : '' }}" 
+                                                        onchange="if(this.value === '__NEW__') { this.classList.add('hidden'); this.name = ''; document.getElementById('position_input').classList.remove('hidden'); document.getElementById('position_input').name = 'position'; document.getElementById('position_input').focus(); document.getElementById('position_cancel_btn').classList.remove('hidden'); }"
+                                                    >
+                                                        <option value="">ជ្រើសរើសមុខតំណែង</option>
+                                                        @foreach ($positionSuggestions as $positionSuggestion)
+                                                            <option value="{{ $positionSuggestion }}" @selected($currentPosition === $positionSuggestion)>{{ $positionSuggestion }}</option>
+                                                        @endforeach
+                                                        <option value="__NEW__" class="font-semibold text-[#356AE6]">+ បញ្ចូលថ្មី...</option>
+                                                    </select>
+                                                    <input 
+                                                        type="text" 
+                                                        id="position_input" 
+                                                        name="{{ $isCustomPosition ? 'position' : '' }}" 
+                                                        value="{{ $isCustomPosition ? $currentPosition : '' }}" 
+                                                        class="form-input bg-slate-50 pr-10 {{ $isCustomPosition ? '' : 'hidden' }}" 
+                                                        placeholder="បញ្ចូលមុខតំណែងថ្មី..."
+                                                    >
+                                                    <button 
+                                                        type="button" 
+                                                        id="position_cancel_btn" 
+                                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition {{ $isCustomPosition ? '' : 'hidden' }}" 
+                                                        onclick="document.getElementById('position_input').classList.add('hidden'); document.getElementById('position_input').name = ''; document.getElementById('position_input').value = ''; document.getElementById('position_select').classList.remove('hidden'); document.getElementById('position_select').name = 'position'; document.getElementById('position_select').value = ''; this.classList.add('hidden');" 
+                                                        title="បោះបង់ការបញ្ចូលថ្មី និងជ្រើសរើសពីបញ្ជី"
+                                                    >
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                                                    </button>
+                                                </div>
                                                 @include('partials.field-error', ['name' => 'position'])
                                             </div>
 
                                             <div>
                                                 <label class="form-label">តួនាទី</label>
-                                                <input
-                                                    type="text"
-                                                    name="role"
-                                                    value="{{ old('role', $teamStaff->role) }}"
-                                                    class="form-input bg-slate-50"
-                                                    placeholder="បញ្ចូលតួនាទី"
-                                                >
+                                                @php($currentRole = old('role', $teamStaff->role))
+                                                <select name="role" class="form-input bg-slate-50">
+                                                    <option value="">ជ្រើសរើសតួនាទី</option>
+                                                    @foreach ($roleOptions as $roleOption)
+                                                        <option value="{{ $roleOption }}" @selected($currentRole === $roleOption)>{{ $roleLabels[$roleOption] ?? $roleOption }}</option>
+                                                    @endforeach
+                                                    @if (filled($currentRole) && ! in_array($currentRole, $roleOptions, true))
+                                                        <option value="{{ $currentRole }}" selected>{{ $currentRole }}</option>
+                                                    @endif
+                                                </select>
                                                 @include('partials.field-error', ['name' => 'role'])
                                             </div>
                                         </div>
@@ -156,34 +222,28 @@
                                     <section class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_14px_30px_rgba(15,23,42,0.05)] sm:p-7 xl:sticky xl:top-6 xl:self-start">
                                         <div class="mb-6 flex flex-col gap-3">
                                             <div>
-                                                <h4 class="text-lg font-semibold text-slate-950">រូបភាពបុគ្គលិក</h4>
-                                                <p class="mt-1 text-sm text-slate-500">ផ្ទុករូបភាពមួយសន្លឹកសម្រាប់បញ្ជី និងទំព័រលម្អិត។</p>
+                                                <h4 class="text-lg font-semibold text-slate-950">រូបភាពប្រវត្តិរូប</h4>
+                                                <p class="mt-1 text-sm text-slate-500">បញ្ចូលរូបភាពសម្រាប់បុគ្គលិកនេះ។</p>
                                             </div>
-                                            <span class="w-fit rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">Section 02</span>
+                                            <span class="w-fit rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">ផ្នែក ០២</span>
                                         </div>
 
-                                        <div class="grid gap-5 md:grid-cols-[minmax(0,1fr)_12rem] md:items-start">
-                                            <div class="space-y-4">
-                                                <input type="file" name="avatar_image" accept=".jpg,.jpeg,.png,.webp" class="block w-full rounded-[1.35rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 file:mr-3 file:rounded-[1.1rem] file:border-0 file:bg-[#e8efff] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#2c5dd6] hover:file:bg-[#dce7ff]" data-avatar-input>
-                                                <p class="text-xs text-slate-500">អនុញ្ញាត JPG, PNG, WEBP ទំហំអតិបរមា 5MB</p>
-                                                @include('partials.field-error', ['name' => 'avatar_image'])
-                                            </div>
+                                        <div class="space-y-4">
+                                            <input type="file" name="avatar_image" accept=".jpg,.jpeg,.png,.webp" class="block w-full rounded-[1.35rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 file:mr-3 file:rounded-[1.1rem] file:border-0 file:bg-[#e8efff] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#2c5dd6] hover:file:bg-[#dce7ff]" data-avatar-input>
+                                            @include('partials.field-error', ['name' => 'avatar_image'])
 
-                                            <div class="mx-auto w-full max-w-[12rem] rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4 md:mx-0" data-avatar-preview-wrapper>
-                                                <p class="text-center text-xs font-semibold text-slate-400">មើលរូបភាព</p>
-                                                <div class="mt-3 flex min-h-[9rem] items-center justify-center">
-                                                    @if ($isEdit && $teamStaff->hasStoredAvatar())
-                                                        <img src="{{ route('team-staff.avatar', $teamStaff) }}" alt="{{ $teamStaff->name_latin }}" class="mx-auto rounded-full object-cover ring-1 ring-slate-200" style="width: 8.5rem; height: 8.5rem;" data-avatar-preview-image data-initial-src="{{ route('team-staff.avatar', $teamStaff) }}">
-                                                        <div class="hidden mx-auto grid place-items-center rounded-full border border-dashed border-slate-300 bg-white text-center text-sm text-slate-400" style="width: 8.5rem; height: 8.5rem;" data-avatar-preview-empty>
-                                                            មិនទាន់មានរូបភាព
-                                                        </div>
-                                                    @else
-                                                        <img src="" alt="Avatar preview" class="mx-auto hidden rounded-full object-cover ring-1 ring-slate-200" style="width: 8.5rem; height: 8.5rem;" data-avatar-preview-image data-initial-src="">
-                                                        <div class="mx-auto grid place-items-center rounded-full border border-dashed border-slate-300 bg-white text-center text-sm text-slate-400" style="width: 8.5rem; height: 8.5rem;" data-avatar-preview-empty>
-                                                            មិនទាន់មានរូបភាព
-                                                        </div>
-                                                    @endif
-                                                </div>
+                                            <div class="flex items-center justify-center rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+                                                @if ($isEdit && $teamStaff->hasStoredAvatar())
+                                                    <img src="{{ route('team-staff.avatar', $teamStaff) }}" alt="{{ $teamStaff->name_latin }}" class="mx-auto rounded-full object-cover ring-1 ring-slate-200" style="width: 8.5rem; height: 8.5rem;" data-avatar-preview-image data-initial-src="{{ route('team-staff.avatar', $teamStaff) }}">
+                                                    <div class="hidden h-[8.5rem] w-[8.5rem] place-items-center rounded-full bg-slate-900 text-3xl font-semibold text-white" data-avatar-preview-empty>
+                                                        {{ strtoupper(substr($teamStaff->name_latin ?: $teamStaff->name_kh ?: 'S', 0, 1)) }}
+                                                    </div>
+                                                @else
+                                                    <img src="" alt="ការមើលរូបភាពជាមុន" class="hidden mx-auto rounded-full object-cover ring-1 ring-slate-200" style="width: 8.5rem; height: 8.5rem;" data-avatar-preview-image>
+                                                    <div class="grid h-[8.5rem] w-[8.5rem] place-items-center rounded-full bg-slate-900 text-3xl font-semibold text-white" data-avatar-preview-empty>
+                                                        {{ strtoupper(substr($teamStaff->name_latin ?: $teamStaff->name_kh ?: 'S', 0, 1)) }}
+                                                    </div>
+                                                @endif
                                             </div>
                                         </div>
                                     </section>
@@ -193,86 +253,68 @@
                                     <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
                                             <h4 class="text-lg font-semibold text-slate-950">ឯកសារ</h4>
-                                            <p class="mt-1 text-sm text-slate-500">បន្ថែមឯកសារជាជួរៗ ដោយជ្រើសប្រភេទឯកសារជាមុន ហើយបន្ទាប់មកផ្ទុកឯកសារតាមលំដាប់។</p>
+                                            <p class="mt-1 text-sm text-slate-500">ប្រអប់នីមួយៗខាងក្រោមត្រូវបានយកមកពីបញ្ជីតម្រូវការឯកសាររបស់បុគ្គលិកក្រុម។</p>
                                         </div>
-                                        <div class="flex flex-wrap items-center gap-3">
-                                            <a href="{{ route('admin.home', ['section' => 'staff-team-documents']) }}" class="inline-flex items-center justify-center rounded-[1.1rem] border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-white">
-                                                + បង្កើតប្រភេទឯកសារ
-                                            </a>
-                                            <button type="button" class="inline-flex items-center justify-center rounded-[1.1rem] bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800" data-add-document-row>
-                                                + បន្ថែមឯកសារ
-                                            </button>
-                                        </div>
+                                        <a href="{{ route('admin.home', ['section' => 'staff-team-documents']) }}" class="inline-flex items-center justify-center rounded-[1.1rem] border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-white">
+                                            គ្រប់គ្រងប្រភេទឯកសារ
+                                        </a>
                                     </div>
 
-                                    <div class="grid gap-5 md:grid-cols-2" data-document-rows data-next-index="{{ $documentRows }}">
-                                        @for ($i = 0; $i < $documentRows; $i++)
-                                            <div class="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4" data-document-row>
-                                                <div class="flex items-center justify-between gap-3">
-                                                    <p class="text-sm font-semibold text-slate-800" data-document-title>ឯកសារ {{ $i + 1 }}</p>
-                                                    <button type="button" class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-500 transition hover:bg-slate-100" data-remove-document-row>
-                                                        លុបជួរ
-                                                    </button>
-                                                </div>
+                                    @if ($documentRequirements->isNotEmpty())
+                                        <div class="grid gap-5 md:grid-cols-2">
+                                            @foreach ($documentRequirements as $documentRequirement)
+                                                @php($linkedDocument = $documentsByRequirementSlug->get($documentRequirement->slug))
+                                                <div class="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4">
+                                                    <div class="flex items-start justify-between gap-3">
+                                                        <div class="min-w-0">
+                                                            <p class="text-sm font-semibold text-slate-900">{{ $documentRequirement->name_kh }}</p>
+                                                            <p class="mt-1 break-all text-xs text-slate-500">{{ $linkedDocument['original_name'] ?? 'មិនទាន់មានឯកសារបញ្ចូលទេ' }}</p>
+                                                        </div>
+                                                        <span class="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold {{ $linkedDocument ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                                                            {{ $linkedDocument ? 'បានបញ្ចូល' : 'ខ្វះឯកសារ' }}
+                                                        </span>
+                                                    </div>
 
-                                                @php($selectedDocumentLabel = old('documents_labels.'.$i, $existingDocuments->get($i)['label'] ?? ''))
-                                                <div class="mt-3 space-y-3">
-                                                    <select name="documents_labels[]" class="form-input bg-white">
-                                                        <option value="">ជ្រើសប្រភេទឯកសារ</option>
-                                                        @foreach ($documentTypeOptions as $documentTypeOption)
-                                                            <option value="{{ $documentTypeOption }}" @selected($selectedDocumentLabel === $documentTypeOption)>{{ $documentTypeOption }}</option>
-                                                        @endforeach
-                                                        @if ($selectedDocumentLabel !== '' && ! $documentTypeOptions->contains($selectedDocumentLabel))
-                                                            <option value="{{ $selectedDocumentLabel }}" selected>{{ $selectedDocumentLabel }}</option>
+                                                    <div class="mt-4 space-y-3">
+                                                        <input
+                                                            type="file"
+                                                            name="documents[{{ $documentRequirement->id }}]"
+                                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                                                            class="block w-full rounded-[1.35rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 file:mr-3 file:rounded-[1.1rem] file:border-0 file:bg-[#e8efff] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#2c5dd6] hover:file:bg-[#dce7ff]"
+                                                        >
+                                                        @include('partials.field-error', ['name' => 'documents.'.$documentRequirement->id])
+
+                                                        @if ($isEdit && $linkedDocument)
+                                                            <a href="{{ route('team-staff.documents.download-by-requirement', [$teamStaff, $documentRequirement]) }}" class="inline-flex items-center rounded-[1.1rem] border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100">
+                                                                ទាញយកឯកសារបច្ចុប្បន្ន
+                                                            </a>
                                                         @endif
-                                                    </select>
-                                                    @php($documentLabelErrorName = 'documents_labels.'.$i)
-                                                    @include('partials.field-error', ['name' => $documentLabelErrorName])
-
-                                                    <input type="file" name="documents[]" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" class="block w-full rounded-[1.35rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 file:mr-3 file:rounded-[1.1rem] file:border-0 file:bg-[#e8efff] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#2c5dd6] hover:file:bg-[#dce7ff]">
-                                                    @php($documentErrorName = 'documents.'.$i)
-                                                    @include('partials.field-error', ['name' => $documentErrorName])
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        @endfor
-                                    </div>
-
-                                    <template data-document-row-template>
-                                        <div class="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4" data-document-row>
-                                            <div class="flex items-center justify-between gap-3">
-                                                <p class="text-sm font-semibold text-slate-800" data-document-title>ឯកសារ __NUMBER__</p>
-                                                <button type="button" class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-500 transition hover:bg-slate-100" data-remove-document-row>
-                                                    លុបជួរ
-                                                </button>
-                                            </div>
-
-                                            <div class="mt-3 space-y-3">
-                                                <select name="documents_labels[]" class="form-input bg-white">
-                                                    <option value="">ជ្រើសប្រភេទឯកសារ</option>
-                                                    @foreach ($documentTypeOptions as $documentTypeOption)
-                                                        <option value="{{ $documentTypeOption }}">{{ $documentTypeOption }}</option>
-                                                    @endforeach
-                                                </select>
-
-                                                <input type="file" name="documents[]" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" class="block w-full rounded-[1.35rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 file:mr-3 file:rounded-[1.1rem] file:border-0 file:bg-[#e8efff] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#2c5dd6] hover:file:bg-[#dce7ff]">
-                                            </div>
+                                            @endforeach
                                         </div>
-                                    </template>
+                                    @else
+                                        <div class="rounded-[1.35rem] border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                                            មិនទាន់មានការបង្កើតប្រភេទឯកសារសម្រាប់បុគ្គលិកក្រុមនៅឡើយទេ។
+                                        </div>
+                                    @endif
 
                                     @include('partials.field-error', ['name' => 'documents'])
-                                    @include('partials.field-error', ['name' => 'documents_labels'])
 
-                                    @if ($isEdit && $existingDocuments->isNotEmpty())
+                                    @if ($isEdit && $legacyDocuments->isNotEmpty())
                                         <div class="mt-6 rounded-[1.35rem] border border-slate-200 bg-white p-4">
-                                            <p class="text-sm font-semibold text-slate-900">ឯកសារបច្ចុប្បន្ន</p>
+                                            <p class="text-sm font-semibold text-slate-900">ឯកសារចាស់</p>
+                                            <p class="mt-1 text-sm text-slate-500">ឯកសារទាំងនេះនៅតែភ្ជាប់ជាមួយកំណត់ត្រានេះ ប៉ុន្តែមិនទាន់ភ្ជាប់ជាមួយតម្រូវការឯកសារដែលកំពុងប្រើទេ។</p>
                                             <div class="mt-3 grid gap-3 md:grid-cols-2">
-                                                @foreach ($existingDocuments as $index => $document)
-                                                    <a href="{{ route('team-staff.documents.download', [$teamStaff, $index]) }}" class="inline-flex items-center rounded-[1.1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
-                                                        {{ $document['label'] ?? 'ឯកសារ '.($index + 1) }}: {{ $document['original_name'] ?? 'ឯកសារ' }}
-                                                    </a>
+                                                @foreach ($legacyDocuments as $document)
+                                                    @php($documentIndex = $existingDocuments->search(fn ($entry) => ($entry['path'] ?? null) === ($document['path'] ?? null)))
+                                                    @if ($documentIndex !== false)
+                                                        <a href="{{ route('team-staff.documents.download', [$teamStaff, $documentIndex]) }}" class="inline-flex items-center rounded-[1.1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
+                                                            {{ $document['label'] ?? 'ឯកសារ' }}: {{ $document['original_name'] ?? '-' }}
+                                                        </a>
+                                                    @endif
                                                 @endforeach
                                             </div>
-                                            <p class="mt-3 text-sm text-slate-500">បើអ្នកផ្ទុកឯកសារថ្មី វានឹងជំនួសបញ្ជីឯកសារចាស់ទាំងអស់។</p>
                                         </div>
                                     @endif
                                 </section>
@@ -286,7 +328,7 @@
                                             បោះបង់
                                         </a>
                                         <button type="submit" class="inline-flex items-center justify-center rounded-[1.35rem] bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
-                                            {{ $isEdit ? 'រក្សាទុកការកែប្រែ' : 'រក្សាទុកបុគ្គលិក' }}
+                                            {{ $isEdit ? 'រក្សាទុកការកែប្រែ' : 'បង្កើតបុគ្គលិក' }}
                                         </button>
                                     </div>
                                 </section>
@@ -300,11 +342,49 @@
                         @endforeach
                     </datalist>
 
+                    {{-- Blade data bridge: stores server-side values for the JS below --}}
+                    <div
+                        id="credential-data"
+                        class="hidden"
+                        data-preview-username="{{ $previewUsername }}"
+                        data-preview-id-number="{{ $previewIdNumber ?: '000001' }}"
+                    ></div>
+
                     <script>
                         (() => {
+                            const credentialNameInput = document.querySelector('input[name="name_latin"]');
+                            const credentialIdInput = document.querySelector('input[name="id_number"]');
+                            const credentialUsernameOutput = document.querySelector('[data-credential-username]');
+                            const credentialPasswordOutput = document.querySelector('[data-credential-password]');
                             const avatarInput = document.querySelector('[data-avatar-input]');
                             const avatarPreviewImage = document.querySelector('[data-avatar-preview-image]');
                             const avatarPreviewEmpty = document.querySelector('[data-avatar-preview-empty]');
+
+                            const usernameBase = (value) => {
+                                const normalized = (value || '')
+                                    .replace(/\s+/g, ' ')
+                                    .trim();
+
+                                return normalized || 'បុគ្គលិក';
+                            };
+
+                            const credentialData = document.getElementById('credential-data');
+                            const fallbackUsername = credentialData ? credentialData.dataset.previewUsername : '';
+                            const fallbackIdNumber = credentialData ? credentialData.dataset.previewIdNumber : '000001';
+
+                            const syncCredentialPreview = () => {
+                                if (credentialUsernameOutput) {
+                                    credentialUsernameOutput.textContent = usernameBase(credentialNameInput?.value || fallbackUsername);
+                                }
+
+                                if (credentialPasswordOutput) {
+                                    credentialPasswordOutput.textContent = credentialIdInput?.value?.trim() || fallbackIdNumber;
+                                }
+                            };
+
+                            credentialNameInput?.addEventListener('input', syncCredentialPreview);
+                            credentialIdInput?.addEventListener('input', syncCredentialPreview);
+                            syncCredentialPreview();
 
                             if (avatarInput && avatarPreviewImage && avatarPreviewEmpty) {
                                 let previewObjectUrl = null;
@@ -318,7 +398,7 @@
                                         previewObjectUrl = null;
                                     }
 
-                                    if (! file) {
+                                    if (!file) {
                                         if (initialSrc !== '') {
                                             avatarPreviewImage.src = initialSrc;
                                             avatarPreviewImage.classList.remove('hidden');
@@ -341,71 +421,11 @@
                                     avatarPreviewEmpty.classList.remove('grid');
                                 });
                             }
-
-                            const rowsContainer = document.querySelector('[data-document-rows]');
-                            const addRowButton = document.querySelector('[data-add-document-row]');
-                            const rowTemplate = document.querySelector('[data-document-row-template]');
-
-                            if (!rowsContainer || !addRowButton || !rowTemplate) {
-                                return;
-                            }
-
-                            const updateTitles = () => {
-                                rowsContainer.querySelectorAll('[data-document-row]').forEach((row, index) => {
-                                    const title = row.querySelector('[data-document-title]');
-
-                                    if (title) {
-                                        title.textContent = `ឯកសារ ${index + 1}`;
-                                    }
-                                });
-                            };
-
-                            const bindRemove = (row) => {
-                                const removeButton = row.querySelector('[data-remove-document-row]');
-
-                                if (! removeButton) {
-                                    return;
-                                }
-
-                                removeButton.addEventListener('click', () => {
-                                    const rows = rowsContainer.querySelectorAll('[data-document-row]');
-
-                                    if (rows.length <= 1) {
-                                        row.querySelectorAll('input').forEach((input) => {
-                                            input.value = '';
-                                        });
-
-                                        row.querySelectorAll('select').forEach((select) => {
-                                            select.selectedIndex = 0;
-                                        });
-
-                                        return;
-                                    }
-
-                                    row.remove();
-                                    updateTitles();
-                                });
-                            };
-
-                            rowsContainer.querySelectorAll('[data-document-row]').forEach(bindRemove);
-
-                            addRowButton.addEventListener('click', () => {
-                                const rowCount = rowsContainer.querySelectorAll('[data-document-row]').length + 1;
-                                const html = rowTemplate.innerHTML.replace('__NUMBER__', rowCount.toString());
-                                rowsContainer.insertAdjacentHTML('beforeend', html);
-                                const newRow = rowsContainer.querySelectorAll('[data-document-row]')[rowCount - 1];
-
-                                if (newRow) {
-                                    bindRemove(newRow);
-                                }
-
-                                updateTitles();
-                            });
                         })();
                     </script>
 
                     <footer class="admin-footer-band flex flex-col gap-3 px-4 py-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-                        <p>&copy; {{ now()->year }} ប្រព័ន្ធការចុះឈ្មោះសិក្ខាកាមវគ្គសិក្សាយោធា</p>
+                        <p>&copy; {{ now()->year }} ប្រព័ន្ធចុះឈ្មោះយោធា</p>
                         <div class="flex items-center gap-3">
                             <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">API ដំណើរការ</span>
                             <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">V1.0</span>

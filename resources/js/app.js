@@ -32,6 +32,31 @@ window.ArmyRegistrationLoading = {
     hide: hideSubmitLoadingDialog,
 };
 
+function buildLoadingAlertOptions(message = 'សូមចាំបន្តិច....') {
+    return {
+        title: message,
+        html: `
+            <div class="swal2-kh-loading-wrap" aria-hidden="true">
+                <div class="swal2-kh-loading-spinner"></div>
+            </div>
+        `,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        customClass: {
+            popup: 'swal2-kh-popup',
+            title: 'swal2-kh-title',
+            htmlContainer: 'swal2-kh-content',
+        },
+    };
+}
+
+showSubmitLoadingDialog = function showSubmitLoadingDialog(message = 'សូមចាំបន្តិច....') {
+    Swal.fire(buildLoadingAlertOptions(message));
+};
+
+window.ArmyRegistrationLoading.show = showSubmitLoadingDialog;
+
 const monthFormatter = new Intl.DateTimeFormat('km-KH', {
     month: 'long',
     year: 'numeric',
@@ -654,6 +679,7 @@ function initAjaxForms() {
             });
 
             try {
+
                 await window.axios({
                     url: form.action,
                     method: (form.method || 'POST').toLowerCase(),
@@ -687,11 +713,23 @@ function initAjaxForms() {
                 window.location.reload();
             } catch (error) {
                 const errors = error?.response?.data?.errors || {};
+                const firstErrorElement = fieldErrorElements.find((candidate) => !candidate.classList.contains('hidden'));
 
                 Object.entries(errors).forEach(([name, messages]) => {
                     if (Array.isArray(messages) && messages[0]) {
                         setFieldError(name, messages[0]);
                     }
+                });
+
+                if (error?.response?.status === 422) {
+                    console.error('AJAX form validation failed', error.response?.data);
+                }
+
+                const firstVisibleError = fieldErrorElements.find((candidate) => !candidate.classList.contains('hidden'));
+
+                (firstVisibleError || firstErrorElement)?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
                 });
 
                 await Swal.fire({
@@ -718,6 +756,171 @@ function initAjaxForms() {
     });
 }
 
+function resolveFormMethod(form) {
+    const spoofedMethod = (form.querySelector('input[name="_method"]')?.value || form.method || 'POST').toUpperCase();
+    return spoofedMethod;
+}
+
+function extractErrorMessage(payload, fallback) {
+    return payload?.message
+        || Object.values(payload?.errors || {})?.[0]?.[0]
+        || fallback;
+}
+
+function getActionButtons(form) {
+    return Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]'));
+}
+
+function setButtonsDisabled(buttons, disabled) {
+    buttons.forEach((button) => {
+        button.disabled = disabled;
+    });
+}
+
+async function showActionResult(type, title, text) {
+    await Swal.fire({
+        icon: type,
+        title,
+        text,
+        confirmButtonText: type === 'success' ? 'យល់ព្រម' : 'បិទ',
+        confirmButtonColor: '#356AE6',
+        timer: type === 'success' ? 1600 : undefined,
+        timerProgressBar: type === 'success',
+        customClass: {
+            popup: 'swal2-kh-popup',
+            title: 'swal2-kh-title',
+            htmlContainer: 'swal2-kh-content',
+            confirmButton: 'swal2-kh-confirm',
+        },
+    });
+}
+
+function initAdminActionFlows() {
+    if (!document.body.classList.contains('admin-app')) {
+        return;
+    }
+
+    document.querySelectorAll('form').forEach((form) => {
+        if (form.dataset.actionFlowBound === 'true') {
+            return;
+        }
+
+        if (form.dataset.disableActionFlow === 'true') {
+            return;
+        }
+
+        const method = resolveFormMethod(form);
+
+        if (method === 'GET') {
+            return;
+        }
+
+        if ((form.getAttribute('action') || '').includes('/logout')) {
+            return;
+        }
+
+        form.dataset.actionFlowBound = 'true';
+        // Prevent duplicated listeners from legacy handlers.
+        form.dataset.swalBound = 'true';
+        form.dataset.ajaxBound = 'true';
+        form.dataset.submitLoadingBound = 'true';
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const submitter = event.submitter instanceof HTMLElement ? event.submitter : null;
+            const actionAllowed = submitter?.dataset.actionAllowed ?? form.dataset.actionAllowed;
+
+            if (actionAllowed === 'false') {
+                await showActionResult('error', 'Access Denied', 'You do not have permission for this action.');
+                return;
+            }
+
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                await showActionResult('error', 'Validation Error', 'Please check the form data and try again.');
+                return;
+            }
+
+            if (form.hasAttribute('data-swal-confirm')) {
+                const confirmation = await Swal.fire({
+                    icon: 'warning',
+                    title: form.dataset.swalTitle || 'បញ្ជាក់សកម្មភាព',
+                    text: form.dataset.swalText || 'តើអ្នកពិតជាចង់បន្តមែនទេ?',
+                    confirmButtonText: form.dataset.swalConfirmText || 'បាទ/ចាស បន្ត',
+                    cancelButtonText: form.dataset.swalCancelText || 'បោះបង់',
+                    confirmButtonColor: '#e11d48',
+                    cancelButtonColor: '#94a3b8',
+                    showCancelButton: true,
+                    reverseButtons: true,
+                    focusCancel: true,
+                    customClass: {
+                        popup: 'swal2-kh-popup',
+                        title: 'swal2-kh-title',
+                        htmlContainer: 'swal2-kh-content',
+                        confirmButton: 'swal2-kh-confirm',
+                        cancelButton: 'swal2-kh-cancel',
+                    },
+                });
+
+                if (!confirmation.isConfirmed) {
+                    return;
+                }
+            }
+
+            const submitButtons = getActionButtons(form);
+            setButtonsDisabled(submitButtons, true);
+            Swal.fire(buildLoadingAlertOptions(form.dataset.submitLoadingText || 'សូមចាំបន្តិច....'));
+
+            try {
+                const response = await window.axios({
+                    url: form.action,
+                    method: (form.method || 'POST').toLowerCase(),
+                    data: new FormData(form),
+                    headers: {
+                        Accept: 'application/json',
+                    },
+                    validateStatus: () => true,
+                });
+
+                Swal.close();
+
+                if (response.status >= 200 && response.status < 300) {
+                    await showActionResult('success', form.dataset.actionSuccessTitle || 'ជោគជ័យ', form.dataset.actionSuccessText || 'ប្រតិបត្តិការបានជោគជ័យ។');
+
+                    if (form.dataset.actionRedirect) {
+                        window.location.href = form.dataset.actionRedirect;
+                        return;
+                    }
+
+                    window.location.reload();
+                    return;
+                }
+
+                if (response.status === 403) {
+                    await showActionResult('error', 'Access Denied', extractErrorMessage(response.data, 'You do not have permission for this action.'));
+                    return;
+                }
+
+                if (response.status === 422) {
+                    await showActionResult('error', 'Validation Error', extractErrorMessage(response.data, 'Please check the form data and try again.'));
+                    return;
+                }
+
+                await showActionResult('error', 'Error', extractErrorMessage(response.data, 'An unexpected error occurred. Please try again.'));
+            } catch (error) {
+                Swal.close();
+                await showActionResult(
+                    'error',
+                    'Error',
+                    extractErrorMessage(error?.response?.data, 'An unexpected error occurred. Please try again.'),
+                );
+            } finally {
+                setButtonsDisabled(submitButtons, false);
+            }
+        });
+    });
+}
+
 function initSubmitLoadingDialogs() {
     document.querySelectorAll('form[data-submit-loading-text]').forEach((form) => {
         if (form.dataset.submitLoadingBound === 'true') {
@@ -738,6 +941,9 @@ function initSubmitLoadingDialogs() {
             submitButtons.forEach((button) => {
                 button.disabled = true;
             });
+
+            Swal.fire(buildLoadingAlertOptions(form.dataset.submitLoadingText || 'សូមចាំបន្តិច....'));
+            return;
 
             Swal.fire({
                 title: form.dataset.submitLoadingText || 'សូមចាំបន្តិច....',
@@ -886,6 +1092,7 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         initDatePickers();
         initSweetAlerts();
+        initAdminActionFlows();
         initSweetDeleteConfirmations();
         initAjaxForms();
         initSubmitLoadingDialogs();
@@ -896,6 +1103,7 @@ if (document.readyState === 'loading') {
 } else {
     initDatePickers();
     initSweetAlerts();
+    initAdminActionFlows();
     initSweetDeleteConfirmations();
     initAjaxForms();
     initSubmitLoadingDialogs();

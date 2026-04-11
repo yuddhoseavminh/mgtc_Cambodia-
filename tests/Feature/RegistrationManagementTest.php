@@ -11,10 +11,13 @@ use App\Models\PortalContent;
 use App\Models\Rank;
 use App\Models\TestTakingStaffDocumentRequirement;
 use App\Models\TestTakingStaffRank;
+use App\Models\TeamStaff;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -45,6 +48,33 @@ class RegistrationManagementTest extends TestCase
                 'password' => 'Seavminh1233',
             ])
             ->assertOk();
+    }
+
+    private function createStaffAccount(array $attributes = []): TeamStaff
+    {
+        Storage::fake('local');
+
+        $avatarPath = 'team-staff/avatar-test.jpg';
+        Storage::disk('local')->put($avatarPath, 'avatar');
+
+        return TeamStaff::query()->create(array_merge([
+            'sequence_no' => 1,
+            'military_rank' => 'Captain',
+            'name_kh' => 'សុខ ដារា',
+            'name_latin' => 'Sok Dara',
+            'id_number' => '058256',
+            'username' => 'Sok Dara',
+            'password' => '058256',
+            'avatar_path' => $avatarPath,
+            'avatar_original_name' => 'avatar-test.jpg',
+            'gender' => 'Male',
+            'position' => 'Operations Officer',
+            'role' => 'Staff',
+            'phone_number' => '012345678',
+            'documents' => [],
+            'is_active' => true,
+            'must_change_password' => true,
+        ], $attributes));
     }
 
     public function test_public_registration_page_is_available(): void
@@ -185,7 +215,9 @@ class RegistrationManagementTest extends TestCase
                 'phone_number' => '012345678',
                 'avatar_image' => UploadedFile::fake()->image('avatar.png', 300, 300),
                 'document_files' => [
-                    $documentRequirement->id => UploadedFile::fake()->create('test-document.pdf', 120, 'application/pdf'),
+                    $documentRequirement->id => [
+                        UploadedFile::fake()->create('test-document.pdf', 120, 'application/pdf'),
+                    ],
                 ],
             ]);
 
@@ -262,6 +294,180 @@ class RegistrationManagementTest extends TestCase
                 'applications_per_month',
                 'recent_applications',
             ]);
+    }
+
+    public function test_team_staff_username_matches_latin_name_when_created(): void
+    {
+        Storage::fake('local');
+        $this->loginAsAdmin();
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('Accept', 'application/json')
+            ->withHeader('X-CSRF-TOKEN', $this->csrfToken())
+            ->post('/admin/team-staff', [
+                '_token' => $this->csrfToken(),
+                'military_rank' => 'Captain',
+                'name_kh' => 'យុទ្ធោ សាវមិញ',
+                'name_latin' => 'Yuddho Seavminh',
+                'id_number' => '058256',
+                'avatar_image' => UploadedFile::fake()->image('avatar.png', 300, 300),
+                'gender' => 'Male',
+                'position' => 'Operations Officer',
+                'role' => 'Staff',
+                'phone_number' => '012345678',
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('username', 'Yuddho Seavminh');
+
+        $this->assertDatabaseHas('team_staff', [
+            'name_latin' => 'Yuddho Seavminh',
+            'username' => 'Yuddho Seavminh',
+        ]);
+    }
+
+    public function test_team_staff_username_updates_when_latin_name_changes(): void
+    {
+        $staff = $this->createStaffAccount();
+        $this->loginAsAdmin();
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('Accept', 'application/json')
+            ->withHeader('X-CSRF-TOKEN', $this->csrfToken())
+            ->put("/admin/team-staff/{$staff->id}", [
+                '_token' => $this->csrfToken(),
+                'military_rank' => $staff->military_rank,
+                'name_kh' => $staff->name_kh,
+                'name_latin' => 'Yuddho Seavminh',
+                'id_number' => $staff->id_number,
+                'gender' => $staff->gender,
+                'position' => $staff->position,
+                'role' => $staff->role,
+                'phone_number' => $staff->phone_number,
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('username', 'Yuddho Seavminh');
+
+        $this->assertDatabaseHas('team_staff', [
+            'id' => $staff->id,
+            'name_latin' => 'Yuddho Seavminh',
+            'username' => 'Yuddho Seavminh',
+        ]);
+    }
+
+    public function test_staff_first_login_redirects_to_password_change(): void
+    {
+        $staff = $this->createStaffAccount();
+
+        $response = $this->post('/staff/login', [
+            'username' => $staff->username,
+            'password' => '058256',
+        ]);
+
+        $response->assertRedirect(route('staff.password.edit'));
+        $this->assertAuthenticatedAs($staff, 'staff');
+    }
+
+    public function test_staff_can_change_password_and_manage_private_documents(): void
+    {
+        Storage::fake('local');
+        $staff = $this->createStaffAccount([
+            'avatar_path' => 'team-staff/avatar-test-2.jpg',
+        ]);
+        Storage::disk('local')->put($staff->avatar_path, 'avatar');
+
+        $this->post('/staff/login', [
+            'username' => $staff->username,
+            'password' => '058256',
+        ])->assertRedirect(route('staff.password.edit'));
+
+        $this->put('/staff/password', [
+            'password' => 'NewPass123',
+            'password_confirmation' => 'NewPass123',
+        ])->assertRedirect(route('staff.profile.show'));
+
+        $this->get('/staff/profile')
+            ->assertOk()
+            ->assertSee('ការបញ្ចូលឯកសារ')
+            ->assertSee($staff->name_latin);
+
+        $this->post('/staff/profile/documents', [
+            'document_title' => 'Service Letter',
+            'document_file' => UploadedFile::fake()->create('service-letter.pdf', 120, 'application/pdf'),
+        ])->assertRedirect(route('staff.profile.show'));
+
+        $staff->refresh();
+        $this->assertCount(1, $staff->documents);
+        $this->assertSame('staff', $staff->documents[0]['uploaded_by']);
+
+        $this->get('/staff/profile/documents/0/download')
+            ->assertOk();
+
+        $this->delete('/staff/profile/documents/0')
+            ->assertRedirect(route('staff.profile.show'));
+
+        $staff->refresh();
+        $this->assertSame([], $staff->documents);
+    }
+
+    public function test_admin_can_create_update_and_delete_system_users(): void
+    {
+        $this->loginAsAdmin();
+
+        $this->post('/admin/users', [
+            'name' => 'Global Admin',
+            'email' => 'global.admin@gmail.com',
+            'password' => 'GlobalAdmin@123',
+            'password_confirmation' => 'GlobalAdmin@123',
+            'role' => 'Management',
+            'is_admin' => '1',
+        ])->assertRedirect(route('admin.home', ['section' => 'users']));
+
+        $user = User::query()->where('email', 'global.admin@gmail.com')->first();
+
+        $this->assertNotNull($user);
+        $this->assertTrue($user->is_admin);
+
+        $this->put('/admin/users/'.$user->id, [
+            'name' => 'Operations Manager',
+            'email' => 'operations.manager@gmail.com',
+            'password' => 'Operations@1234',
+            'password_confirmation' => 'Operations@1234',
+            'is_admin' => '0',
+        ])->assertRedirect(route('admin.home', ['section' => 'users']));
+
+        $user->refresh();
+
+        $this->assertSame('Operations Manager', $user->name);
+        $this->assertSame('operations.manager@gmail.com', $user->email);
+        $this->assertFalse($user->is_admin);
+        $this->assertTrue(Hash::check('Operations@1234', $user->password));
+
+        $this->delete('/admin/users/'.$user->id)
+            ->assertRedirect(route('admin.home', ['section' => 'users']));
+
+        $this->assertDatabaseMissing('users', [
+            'id' => $user->id,
+        ]);
+    }
+
+    public function test_admin_cannot_delete_the_currently_authenticated_account(): void
+    {
+        $this->loginAsAdmin();
+
+        $admin = User::query()->where('email', 'seavminhcoding@gmail.com')->firstOrFail();
+
+        $this->delete('/admin/users/'.$admin->id)
+            ->assertRedirect(route('admin.home', ['section' => 'users']))
+            ->assertSessionHasErrors('users');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $admin->id,
+            'email' => 'seavminhcoding@gmail.com',
+        ]);
     }
 
     public function test_admin_can_update_portal_cover_content(): void

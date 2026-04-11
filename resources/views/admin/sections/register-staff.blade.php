@@ -1,6 +1,6 @@
 <section class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
-        <h3 class="text-[1.9rem] font-semibold tracking-tight text-slate-950">គ្រប់គ្រងបុគ្គលិកចុះឈ្មោះ</h3>
+        <h3 class="text-[1.9rem] font-semibold tracking-tight text-slate-950">គ្រប់គ្រងបុគ្គលិកសាកល្បង</h3>
         <p class="mt-2 text-sm text-slate-500">គ្រប់គ្រងការដាក់ស្នើសាធារណៈដែលទទួលបានពីទម្រង់ចុះឈ្មោះបុគ្គលិកសាកល្បង។</p>
     </div>
 
@@ -97,12 +97,20 @@
                         </td>
                         <td class="px-4 py-5" data-label="ថ្ងៃដាក់ស្នើ">{{ optional($registration->submitted_at ?? $registration->created_at)?->khFormat('d/m/Y H:i') ?: '-' }}</td>
                         <td class="px-4 py-5" data-label="សកម្មភាព" data-table-actions>
-                            <div class="flex justify-end gap-2">
-                                @if ($registration->hasStoredAvatar())
-                                    <a href="{{ route('test-taking-staff-registrations.avatar', $registration) }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center rounded-xl px-2 py-2 text-sm font-semibold text-[#356AE6] transition hover:text-[#204ec7]">
-                                        មើល
-                                    </a>
-                                @endif
+                            <div class="flex flex-wrap justify-end gap-2">
+                                <a href="{{ route('admin.test-taking-staff-registrations.show', $registration) }}" class="inline-flex items-center rounded-xl px-2 py-2 text-sm font-semibold text-[#356AE6] transition hover:text-[#204ec7]">
+                                    មើល
+                                </a>
+                                <a href="{{ route('admin.test-taking-staff-registrations.edit', $registration) }}" class="inline-flex items-center rounded-xl px-2 py-2 text-sm font-semibold text-slate-600 transition hover:text-slate-900">
+                                    កែប្រែ
+                                </a>
+                                <form method="POST" action="{{ route('admin.test-taking-staff-registrations.destroy', $registration) }}" onsubmit="return confirm('តើអ្នកពិតជាចង់លុបកំណត់ត្រានេះមែនទេ?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="inline-flex items-center rounded-xl px-2 py-2 text-sm font-semibold text-rose-500 transition hover:text-rose-700">
+                                        លុប
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>

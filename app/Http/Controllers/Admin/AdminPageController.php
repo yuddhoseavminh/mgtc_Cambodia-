@@ -52,10 +52,17 @@ class AdminPageController extends Controller
             'settings',
             'portal-content',
         ];
+        $allowedSections = collect($sections)
+            ->filter(fn (string $candidate): bool => (bool) $request->user()?->canAccessSection($candidate))
+            ->values()
+            ->all();
         $section = $request->string('section')->toString();
+        if ($section === '') {
+            $section = (string) ($request->route('section') ?? '');
+        }
 
-        if (! in_array($section, $sections, true)) {
-            $section = 'overview';
+        if (! in_array($section, $sections, true) || ! in_array($section, $allowedSections, true)) {
+            $section = $allowedSections[0] ?? 'profile';
         }
 
         if ($section === 'portal-content') {
@@ -203,8 +210,8 @@ class AdminPageController extends Controller
             ->withQueryString();
         $staffTeamPreview = TeamStaff::query()
             ->ordered()
-            ->limit(6)
-            ->get();
+            ->paginate(6, ['*'], 'staff_team_page')
+            ->withQueryString();
         $totalTeamStaff = TeamStaff::count();
         $biTeamStaff = TeamStaff::query()
             ->whereIn('role', ['Admin', 'Manager'])

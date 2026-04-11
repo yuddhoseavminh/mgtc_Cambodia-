@@ -284,7 +284,7 @@
                 <div class="public-section-card space-y-4">
                     <div class="public-section-heading">
                         <h2 class="text-xl font-semibold text-slate-950">* ឯកសារភ្ជាប់មកជាមួយ</h2>
-                        <p class="mt-1 text-sm leading-6 text-slate-500">សូមជ្រើសរើសថា មាន ឬ មិនមាន រួចបន្តផ្ទុកឯកសារ ប្រសិនបើមាន។ ដែលមានការផ្ទុកឯកសារចមានទំហំមិនលើ 40 MB</p>
+                        <p class="mt-1 text-sm leading-6 text-slate-500">សូមជ្រើសរើសថា មាន ឬ មិនមាន រួចបន្តផ្ទុកឯកសារ ប្រសិនបើមាន។ អ្នកអាចផ្ទុកឯកសារច្រើនសន្លឹកបាន ទំហំសរុបមិនត្រូវលើសពី 100 MB ហើយឯកសារនីមួយៗមិនលើស 50 MB។</p>
                     </div>
 
                     <div class="{{ $errors->has('upload_total') || $errors->has('submission') ? '' : 'hidden' }} rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700" data-upload-total-alert>{{ $errors->first('upload_total') ?: $errors->first('submission') }}</div>
@@ -314,7 +314,7 @@
                                         <div class="{{ $selectedStatus === 'have' ? '' : 'hidden' }}" data-document-file-wrapper>
                                             <label class="form-label">Upload File(s)</label>
                                             <input type="file" name="document_files[{{ $documentRequirement->id }}][]" class="public-file-input block w-full" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple>
-                                            <p class="mt-2 text-sm text-slate-500">អ្នកអាចផ្ទុកឯកសារ 2 ឬច្រើន សម្រាប់ឯកសារនេះបាន ប្រសិនបើត្រូវ។</p>
+                                            <p class="mt-2 text-sm text-slate-500">អ្នកអាចផ្ទុកឯកសារច្រើនសន្លឹកបាន។ ទំហំមិនត្រូវលើសពី 50 MB ក្នុងមួយហ្វាល់។</p>
                                             @include('partials.field-error', ['name' => "document_files.{$documentRequirement->id}"])
                                             @include('partials.field-error', ['name' => "document_files.{$documentRequirement->id}.*"])
                                         </div>
@@ -347,7 +347,7 @@
             const formatMegabytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
             const getSelectedUploadBytes = () => Array.from(
                 registrationForm.querySelectorAll('input[type="file"]'),
-            ).reduce((total, input) => total + Array.from(input.files || []).reduce((sum, file) => sum.size, 0), 0);
+            ).reduce((total, input) => total + Array.from(input.files || []).reduce((sum, file) => sum + file.size, 0), 0);
 
             const syncUploadAlert = () => {
                 const totalBytes = getSelectedUploadBytes();
@@ -356,7 +356,7 @@
                 uploadAlert.classList.toggle('hidden', !isTooLarge);
 
                 if (isTooLarge) {
-                    uploadAlert.textContent = `ទំហំឯកសារសរុបធំពេក។ សូមកាត់បន្ថយឯកសារឱ្យនៅក្រោម 40 MB ហើយឯកសារនីមួយៗត្រូវតិចជាង 20 MB។ (Current total: ${formatMegabytes(totalBytes)})`;
+                    uploadAlert.textContent = `ទំហំឯកសារសរុបធំពេក។ សូមកាត់បន្ថយឯកសារឱ្យនៅក្រោម 100 MB ហើយឯកសារនីមួយៗត្រូវតិចជាង 50 MB។ (Current total: ${formatMegabytes(totalBytes)})`;
                 } else {
                     uploadAlert.textContent = '';
                 }
@@ -521,7 +521,7 @@
             };
 
             const renderSuccessState = (payload) => {
-                const message = payload?.message || 'Registration submitted successfully.';
+                const message = payload?.message || 'អ្នកបានចុះឈ្មោះដោយជោគជ័យ';
 
                 if (!registrationPage) {
                     showAlert(message);
@@ -536,8 +536,8 @@
                                     <path d="M20 6 9 17l-5-5"></path>
                                 </svg>
                             </div>
-                            <p class="public-success-eyebrow">Registration submitted</p>
-                            <h1 class="public-success-title">Registration submitted successfully</h1>
+                            <p class="public-success-eyebrow">ការចុះឈ្មោះជោគជ័យ</p>
+                            <h1 class="public-success-title">អ្នកបានចុះឈ្មោះដោយជោគជ័យ</h1>
                             <p class="public-success-message">${escapeHtml(message)}</p>
                         </div>
                     </div>
@@ -550,16 +550,51 @@
                 if (event.defaultPrevented) {
                     return;
                 }
-
                 event.preventDefault();
+                
+                if (window.Swal) {
+                    const confirmResult = await window.Swal.fire({
+                        title: 'បញ្ជាក់ការចុះឈ្មោះ',
+                        text: "តើអ្នកពិតជាចង់បញ្ជូនទិន្នន័យនេះមែនទេ?",
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#356AE6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'យល់ព្រម',
+                        cancelButtonText: 'បោះបង់',
+                        customClass: {
+                            popup: 'swal2-kh-popup',
+                            title: 'swal2-kh-title',
+                            htmlContainer: 'swal2-kh-content',
+                            confirmButton: 'swal2-kh-confirm',
+                            cancelButton: 'swal2-kh-cancel',
+                        }
+                    });
+
+                    if (!confirmResult.isConfirmed) {
+                        return;
+                    }
+                }
+
                 clearFieldErrors();
                 showAlert('');
 
-                queueLoadingOverlay(submitLoadingText);
                 submitButton?.setAttribute('disabled', 'disabled');
 
                 if (submitButton) {
                     submitButton.textContent = submitLoadingText;
+                }
+                
+                if (window.Swal) {
+                    window.Swal.fire({
+                        title: 'កំពុងដំណើរការ...',
+                        text: 'សូមរង់ចាំបន្តិច',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            window.Swal.showLoading();
+                        }
+                    });
                 }
 
                 try {
@@ -577,8 +612,7 @@
                     const payload = await response.json().catch(() => ({}));
 
                     if (response.status === 201) {
-                        hideLoadingOverlay();
-                        await showSweetAlert('success', 'ជោគជ័យ', payload.message || 'Registration submitted successfully.');
+                        await showSweetAlert('success', 'ជោគជ័យ', payload.message || 'អ្នកបានចុះឈ្មោះជោគជ័យ។');
                         renderSuccessState(payload);
                         return;
                     }
@@ -601,19 +635,23 @@
                         (uploadAlert.textContent ? uploadAlert : registrationForm.querySelector('[data-field-error]:not(.hidden)'))
                             ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-                        await showSweetAlert('error', 'មានបញ្ហា', generalMessage || 'Please check the highlighted fields and try again.');
+                        await showSweetAlert('error', 'សូមពិនិត្យម្តងទៀត', generalMessage || 'សូមពិនិត្យព័ត៌មានដែលបានបំពេញម្តងទៀត។');
                         return;
                     }
+                    
+                    if (response.status === 403) {
+                         await showSweetAlert('error', 'គ្មានសិទ្ធិ', payload.message || 'អ្នកមិនមានសិទ្ធិក្នុងការបញ្ជូនពាក្យសុំនេះទេ។');
+                         return;
+                    }
 
-                    showAlert(payload.message || 'Unable to submit the registration. Please try again.');
+                    showAlert(payload.message || 'មិនអាចបញ្ជូនពាក្យសុំបានទេ។ សូមសាកល្បងម្តងទៀត។');
                     uploadAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    await showSweetAlert('error', 'មានបញ្ហា', payload.message || 'Unable to submit the registration. Please try again.');
+                    await showSweetAlert('error', 'មានបញ្ហា', payload.message || 'មិនអាចបញ្ជូនពាក្យសុំបានទេ។ សូមសាកល្បងម្តងទៀត។');
                 } catch (error) {
-                    showAlert('Unable to submit the registration. Please try again.');
+                    showAlert('មិនអាចបញ្ជូនពាក្យសុំបានទេ។ សូមសាកល្បងម្តងទៀត។');
                     uploadAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    await showSweetAlert('error', 'មានបញ្ហា', 'Unable to submit the registration. Please try again.');
+                    await showSweetAlert('error', 'មានបញ្ហា', 'អ្នកមិនមានអ៊ីនធឺណិត ឬម៉ាស៊ីនមេមានបញ្ហា។ សូមសាកល្បងម្តងទៀត។');
                 } finally {
-                    hideLoadingOverlay();
                     submitButton?.removeAttribute('disabled');
 
                     if (submitButton) {

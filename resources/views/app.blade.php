@@ -18,7 +18,6 @@
     <body class="min-h-screen bg-slate-100 text-slate-900 {{ request()->is('admin*') ? 'admin-app' : '' }}">
         @php
             $usesInlineAlert = request()->routeIs('registration.form', 'test-taking-staff.form');
-            $usesAdminCreateLoadingOverlay = request()->is('admin/*/create');
             $sweetAlert = null;
             $legacyTestLabels = $legacyTestLabels ?? [];
 
@@ -85,9 +84,6 @@
 
             @yield('body')
 
-            @if ($usesAdminCreateLoadingOverlay)
-                @include('admin.partials.submit-loading-overlay')
-            @endif
         </div>
     </body>
 </html>

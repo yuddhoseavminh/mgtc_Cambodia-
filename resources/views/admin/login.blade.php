@@ -6,13 +6,13 @@
             <section class="rounded-[32px] border border-slate-200 bg-white p-8 shadow-[0_24px_60px_rgba(15,23,42,0.08)] sm:p-10">
                 <p class="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">Admin Login</p>
                 <h2 class="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Sign in to continue</h2>
-                <p class="mt-2 text-sm leading-7 text-slate-500">Use your administrator username or email together with your password.</p>
+                <p class="mt-2 text-sm leading-7 text-slate-500">Use your administrator Email, Login ID, or Username together with your password.</p>
 
                 <form method="POST" action="{{ route('admin.login') }}" class="mt-8 space-y-5">
                     @csrf
                     <div>
-                        <label class="form-label">Username or Email</label>
-                        <input type="text" name="email" value="{{ old('email', old('login')) }}" class="form-input" placeholder="Geography Training Center">
+                        <label class="form-label">Email / Login ID / Username</label>
+                        <input type="text" name="email" value="{{ old('email', old('login', old('username'))) }}" class="form-input" placeholder="admin@gmail.com or username">
                         @include('partials.field-error', ['name' => 'email'])
                     </div>
                     <div>

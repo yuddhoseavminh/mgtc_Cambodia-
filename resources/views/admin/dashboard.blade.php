@@ -59,10 +59,10 @@
             'levels' => ['eyebrow' => 'ការចុះឈ្មោះវគ្គសិក្សា', 'title' => 'កម្រិតសិក្សា'],
             'design-template' => ['eyebrow' => 'ប្រព័ន្ធ', 'title' => 'រចនាទំព័រដើម'],
             'course-template' => ['eyebrow' => 'ប្រព័ន្ធ', 'title' => 'គំរូវគ្គសិក្សា'],
-            'staff-team' => ['eyebrow' => 'ក្រុមបុគ្គលិក', 'title' => 'បុគ្គលិកក្រុមការងារទី៣'],
-            'staff-team-ranks' => ['eyebrow' => 'ក្រុមបុគ្គលិក', 'title' => 'ឋានន្តរស័ក្តិយោធាបុគ្គលិក'],
-            'staff-team-documents' => ['eyebrow' => 'ក្រុមបុគ្គលិក', 'title' => 'ឯកសារបុគ្គលិកក្រុម'],
-            'staff-management' => ['eyebrow' => 'ក្រុមបុគ្គលិក', 'title' => 'គ្រប់គ្រងបុគ្គលិក'],
+            'staff-team' => ['eyebrow' => 'បុគ្គលិកក្រុមការងារទី៣', 'title' => 'បុគ្គលិកក្រុមការងារទី៣'],
+            'staff-team-ranks' => ['eyebrow' => 'បុគ្គលិកក្រុមការងារទី៣', 'title' => 'ឋានន្តរស័ក្តិយោធាបុគ្គលិក'],
+            'staff-team-documents' => ['eyebrow' => 'បុគ្គលិកក្រុមការងារទី៣', 'title' => 'ឯកសារបុគ្គលិកក្រុម'],
+            'staff-management' => ['eyebrow' => 'បុគ្គលិកក្រុមការងារទី៣', 'title' => 'គ្រប់គ្រងបុគ្គលិកក្រុមការងារទី៣'],
             'test-taking-staff' => ['eyebrow' => 'បុគ្គលិកសាកល្បង', 'title' => 'បុគ្គលិកសាកល្បង'],
             'test-taking-staff-template' => ['eyebrow' => 'ប្រព័ន្ធ', 'title' => 'គំរូបុគ្គលិកសាកល្បង'],
             'test-taking-staff-ranks' => ['eyebrow' => 'បុគ្គលិកសាកល្បង', 'title' => 'ឋានន្តរស័ក្តិបុគ្គលិក'],
@@ -76,7 +76,7 @@
 
     <div class="admin-dashboard w-full">
         <div class="dashboard-shell">
-            <div class="admin-dashboard-grid grid min-h-screen lg:grid-cols-[286px_minmax(0,1fr)]">
+            <div class="admin-dashboard-grid grid lg:grid-cols-[286px_minmax(0,1fr)]">
                 @include('admin.partials.sidebar', ['section' => $section])
 
                 <main class="admin-main flex min-h-full flex-col bg-transparent">

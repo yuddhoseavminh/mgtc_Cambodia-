@@ -4,6 +4,9 @@
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">កាតាឡុកក្រុម</p>
             <h3 class="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">បញ្ជីឯកសារបុគ្គលិកក្រុម</h3>
             <p class="mt-3 max-w-2xl text-sm leading-7 text-slate-500">គ្រប់គ្រងប្រភេទឯកសារដែលប្រើនៅក្នុងទម្រង់បង្កើត និងកែប្រែបុគ្គលិកក្រុម។</p>
+            <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-500">
+                Every active document type created here appears on the staff upload page at <span class="font-semibold text-slate-700">/staff/profile</span>.
+            </p>
         </div>
 
         <div class="flex items-center gap-3">

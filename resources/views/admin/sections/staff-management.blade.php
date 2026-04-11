@@ -2,8 +2,8 @@
     <div class="flex flex-col gap-6 border-b border-slate-200 pb-6">
         <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div class="max-w-3xl">
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">ក្រុមបុគ្គលិកទី៣ ៣</p>
-                <h3 class="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">គ្រប់គ្រងបុគ្គលិក</h3>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">បុគ្គលិកក្រុមការងារទី៣ទី៣</p>
+                <h3 class="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">គ្រប់គ្រងបុគ្គលិកក្រុមការងារទី៣</h3>
                 <p class="mt-3 text-sm leading-7 text-slate-500">បង្កើត មើល កែប្រែ និងគ្រប់គ្រងកំណត់ត្រាបុគ្គលិកជាមួយរូបភាព តួនាទី និងឯកសារភ្ជាប់។</p>
             </div>
 
@@ -71,7 +71,7 @@
                     <button type="submit" class="inline-flex h-12 min-w-[110px] items-center justify-center rounded-2xl bg-[#356AE6] px-5 text-sm font-semibold text-white transition hover:bg-[#204ec7]">
                         ស្វែងរក
                     </button>
-                    <a href="{{ route('admin.home', ['section' => 'staff-management']) }}" class="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                    <a href="{{ route('admin.home', ['section' => 'staff-management']) }}" class="inline-flex h-12 items-center justify-center whitespace-nowrap rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                         កំណត់ឡើងវិញ
                     </a>
                 </div>
@@ -83,18 +83,18 @@
         <div class="overflow-x-auto">
             <table class="admin-data-table team-staff-management-table min-w-full text-left">
                 <thead class="bg-slate-50">
-                    <tr class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                        <th class="px-6 py-4">ល.រ</th>
-                        <th class="px-6 py-4">រូបភាព</th>
-                        <th class="px-6 py-4">គោត្តនាម-នាម</th>
-                        <th class="px-6 py-4">ឈ្មោះឡាតាំង</th>
-                        <th class="px-6 py-4">អត្តលេខ</th>
-                        <th class="px-6 py-4">ឋានន្តរស័ក្តិយោធា</th>
-                        <th class="px-6 py-4">ភេទ</th>
-                        <th class="px-6 py-4">មុខតំណែង</th>
-                        <th class="px-6 py-4">លេខទូរស័ព្ទ</th>
-                        <th class="px-6 py-4">តួនាទី</th>
-                        <th class="px-6 py-4 text-right">សកម្មភាព</th>
+                    <tr class="text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                        <th class="whitespace-nowrap px-6 py-4">ល.រ</th>
+                        <th class="whitespace-nowrap px-6 py-4">រូបភាព</th>
+                        <th class="whitespace-nowrap px-6 py-4">គោត្តនាម-នាម</th>
+                        <th class="whitespace-nowrap px-6 py-4">ឈ្មោះឡាតាំង</th>
+                        <th class="whitespace-nowrap px-6 py-4">អត្តលេខ</th>
+                        <th class="whitespace-nowrap px-6 py-4">ឋានន្តរស័ក្តិយោធា</th>
+                        <th class="whitespace-nowrap px-6 py-4">ភេទ</th>
+                        <th class="whitespace-nowrap px-6 py-4">មុខតំណែង</th>
+                        <th class="whitespace-nowrap px-6 py-4">លេខទូរស័ព្ទ</th>
+                        <th class="whitespace-nowrap px-6 py-4">តួនាទី</th>
+                        <th class="whitespace-nowrap px-6 py-4 text-right">សកម្មភាព</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -127,8 +127,8 @@
                             $roleBadgeClass = $resolveStaffBadgeClass($staff->role);
                         @endphp
                         <tr class="border-t border-slate-100 text-sm text-slate-700 transition hover:bg-slate-50/70">
-                            <td class="px-6 py-5 font-semibold text-slate-950" data-label="ល.រ" data-table-primary>{{ $staff->sequence_no }}</td>
-                            <td class="px-6 py-5" data-label="រូបភាព">
+                            <td class="whitespace-nowrap px-6 py-5 font-semibold text-slate-950" data-label="ល.រ" data-table-primary>{{ $staff->sequence_no }}</td>
+                            <td class="whitespace-nowrap px-6 py-5" data-label="រូបភាព">
                                 @if ($staff->hasStoredAvatar())
                                     <button
                                         type="button"
@@ -147,28 +147,28 @@
                                     </div>
                                 @endif
                             </td>
-                            <td class="px-6 py-5 font-semibold text-slate-950" data-label="ឈ្មោះខ្មែរ">{{ $staff->name_kh }}</td>
-                            <td class="px-6 py-5" data-label="ឈ្មោះឡាតាំង">{{ $staff->name_latin }}</td>
-                            <td class="px-6 py-5" data-label="លេខអត្តសញ្ញាណ">{{ $staff->id_number }}</td>
-                            <td class="px-6 py-5" data-label="ឋានន្តរស័ក្តិ">
-                                <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $militaryRankBadgeClass }}">
+                            <td class="whitespace-nowrap px-6 py-5 font-semibold text-slate-950" data-label="ឈ្មោះខ្មែរ">{{ $staff->name_kh }}</td>
+                            <td class="whitespace-nowrap px-6 py-5" data-label="ឈ្មោះឡាតាំង">{{ $staff->name_latin }}</td>
+                            <td class="whitespace-nowrap px-6 py-5 text-slate-500" data-label="លេខអត្តសញ្ញាណ">{{ $staff->id_number }}</td>
+                            <td class="whitespace-nowrap px-6 py-5" data-label="ឋានន្តរស័ក្តិ">
+                                <span class="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold {{ $militaryRankBadgeClass }}">
                                     {{ $staff->military_rank ?: '-' }}
                                 </span>
                             </td>
-                            <td class="px-6 py-5" data-label="ភេទ">{{ $staff->gender }}</td>
-                            <td class="px-6 py-5" data-label="តួនាទី">{{ $staff->position }}</td>
-                            <td class="px-6 py-5" data-label="លេខទូរស័ព្ទ">{{ $staff->phone_number }}</td>
-                            <td class="px-6 py-5" data-label="សិទ្ធិ">
-                                <span class="inline-flex w-max min-w-max items-center whitespace-nowrap break-keep rounded-full px-3 py-1 text-xs font-semibold leading-none {{ $roleBadgeClass }}">{{ $staff->role }}</span>
+                            <td class="whitespace-nowrap px-6 py-5 text-slate-500" data-label="ភេទ">{{ $staff->gender }}</td>
+                            <td class="whitespace-nowrap px-6 py-5 text-slate-500" data-label="តួនាទី">{{ $staff->position }}</td>
+                            <td class="whitespace-nowrap px-6 py-5 text-sm font-medium text-slate-600" data-label="លេខទូរស័ព្ទ">{{ $staff->phone_number }}</td>
+                            <td class="whitespace-nowrap px-6 py-5" data-label="សិទ្ធិ">
+                                <span class="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide {{ $roleBadgeClass }}">{{ $staff->role }}</span>
                             </td>
-                            <td class="px-6 py-5" data-label="សកម្មភាព" data-table-actions>
-                                <div class="flex flex-wrap justify-end gap-2">
-                                    <a href="{{ route('team-staff.show', $staff) }}" class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">មើល</a>
-                                    <a href="{{ route('team-staff.edit', $staff) }}" class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">កែប្រែ</a>
-                                    <form method="POST" action="{{ route('team-staff.destroy', $staff) }}" data-swal-confirm data-swal-title="បញ្ជាក់ការលុប" data-swal-text="តើអ្នកពិតជាចង់លុបកំណត់ត្រាបុគ្គលិកនេះមែនទេ?">
+                            <td class="whitespace-nowrap px-6 py-5 text-right" data-label="សកម្មភាព" data-table-actions>
+                                <div class="flex flex-nowrap items-center justify-end gap-2">
+                                    <a href="{{ route('team-staff.show', $staff) }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900 shadow-sm">មើល</a>
+                                    <a href="{{ route('team-staff.edit', $staff) }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900 shadow-sm">កែប្រែ</a>
+                                    <form method="POST" action="{{ route('team-staff.destroy', $staff) }}" class="m-0" data-swal-confirm data-swal-title="បញ្ជាក់ការលុប" data-swal-text="តើអ្នកពិតជាចង់លុបកំណត់ត្រាបុគ្គលិកនេះមែនទេ?">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="inline-flex items-center rounded-xl bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">លុប</button>
+                                        <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-xl bg-orange-50 px-3.5 py-2 text-xs font-semibold text-orange-600 transition hover:bg-orange-100 hover:text-orange-700 shadow-sm">លុប</button>
                                     </form>
                                 </div>
                             </td>
@@ -186,7 +186,7 @@
                                         </svg>
                                     </div>
                                     <h4 class="mt-5 text-lg font-semibold text-slate-950">មិនមានកំណត់ត្រាបុគ្គលិកទេ</h4>
-                                    <p class="mt-2 text-sm leading-6 text-slate-500">មិនមានកំណត់ត្រាក្រុមបុគ្គលិកទី៣ ៣ ដែលត្រូវនឹងតម្រងបច្ចុប្បន្នទេ។ បង្កើតកំណត់ត្រាថ្មីដើម្បីចាប់ផ្តើមបញ្ជីក្រុមរបស់អ្នក។</p>
+                                    <p class="mt-2 text-sm leading-6 text-slate-500">មិនមានកំណត់ត្រាបុគ្គលិកក្រុមការងារទី៣ ដែលត្រូវនឹងតម្រងបច្ចុប្បន្នទេ។ បង្កើតកំណត់ត្រាថ្មីដើម្បីចាប់ផ្តើមបញ្ជីក្រុមរបស់អ្នក។</p>
                                     <a href="{{ route('team-staff.create') }}" class="mt-5 inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
                                         បន្ថែមបុគ្គលិកថ្មី
                                     </a>

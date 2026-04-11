@@ -13,7 +13,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->redirectGuestsTo(fn () => route('login'));
+        $middleware->redirectGuestsTo(function (Request $request) {
+            if ($request->is('staff') || $request->is('staff/*')) {
+                return route('staff.login');
+            }
+
+            return route('login');
+        });
+        $middleware->alias([
+            'staff.password.change' => \App\Http\Middleware\EnsureStaffPasswordChange::class,
+        ]);
         $middleware->validateCsrfTokens();
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -100,6 +100,11 @@
                 </article>
             @endforeach
         </div>
+        @if ($staffTeamPreview->hasPages())
+            <div class="mt-6 border-t border-slate-100 pt-6">
+                {{ $staffTeamPreview->links() }}
+            </div>
+        @endif
     @else
         <div class="mt-6 rounded-[1.7rem] border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">មិនមានទិន្នន័យ</p>
@@ -112,7 +117,7 @@
                     បន្ថែមបុគ្គលិកថ្មី
                 </a>
                 <a href="{{ route('admin.home', ['section' => 'staff-management']) }}" class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
-                    ចូលទៅគ្រប់គ្រងបុគ្គលិក
+                    ចូលទៅគ្រប់គ្រងបុគ្គលិកក្រុមការងារទី៣
                 </a>
             </div>
         </div>

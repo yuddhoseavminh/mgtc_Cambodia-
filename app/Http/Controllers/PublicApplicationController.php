@@ -19,7 +19,7 @@ use Illuminate\Validation\ValidationException;
 
 class PublicApplicationController extends Controller
 {
-    private const MAX_TOTAL_UPLOAD_BYTES = 41943040;
+    private const MAX_TOTAL_UPLOAD_BYTES = 104857600;
 
     public function store(Request $request): JsonResponse|RedirectResponse
     {
@@ -57,7 +57,7 @@ class PublicApplicationController extends Controller
                 'array',
                 'min:1',
             ];
-            $rules["{$fileKey}.*"] = ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:20480'];
+            $rules["{$fileKey}.*"] = ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:51200'];
         }
 
         $validated = $request->validate($rules);
@@ -110,7 +110,7 @@ class PublicApplicationController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'status_title' => 'áž€áž¶ážšáž…áž»áŸ‡ážˆáŸ’áž˜áŸ„áŸ‡áž‡áŸ„áž‚áž‡áŸáž™',
+                'status_title' => 'ការចុះឈ្មោះជោគជ័យ',
                 'message' => 'អ្នកបានចុះឈ្មោះដោយជោគជ័យ សំណាងល្អ ជួបគ្នាឆាប់ៗ។',
             ], 201);
         }
