@@ -1,6 +1,4 @@
-# ============================================================
-#  Stage 1 – Composer dependencies (vendor/)
-# ============================================================
+# Stage 1 – Composer dependencies (vendor/)
 FROM composer:2.7 AS composer
 
 WORKDIR /app
@@ -27,10 +25,8 @@ COPY resources/ resources/
 
 RUN npm ci --silent && npm run build
 
-# ============================================================
-#  Stage 3 – Final PHP runtime image
-# ============================================================
-FROM php:8.2-fpm-alpine
+# Stage 3 – Final PHP runtime image
+FROM php:8.4-fpm-alpine
 
 LABEL maintainer="army_from_register"
 LABEL description="Laravel 12 – Army Registration System"
