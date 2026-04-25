@@ -33,33 +33,18 @@ LABEL maintainer="army_from_register"
 LABEL description="Laravel 12 – Army Registration System"
 
 # ---------- OS / PHP extensions ----------
+# Use install-php-extensions for reliable, automated dependency resolution
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+
 RUN apk add --no-cache \
         bash \
         curl \
         nginx \
         supervisor \
-        mysql-client \
-        freetype \
-        libjpeg-turbo \
-        libpng \
-        libwebp \
-        libzip \
-        oniguruma \
+        mariadb-client \
         zip \
         unzip \
-    && apk add --no-cache --virtual .build-deps \
-        $PHPIZE_DEPS \
-        libpng-dev \
-        libjpeg-turbo-dev \
-        libwebp-dev \
-        freetype-dev \
-        libzip-dev \
-        oniguruma-dev \
-    && docker-php-ext-configure gd \
-        --with-freetype \
-        --with-jpeg \
-        --with-webp \
-    && docker-php-ext-install -j$(nproc) \
+    && install-php-extensions \
         pdo_mysql \
         mbstring \
         exif \
@@ -67,8 +52,7 @@ RUN apk add --no-cache \
         bcmath \
         gd \
         zip \
-        opcache \
-    && apk del .build-deps
+        opcache
 
 # ---------- PHP configuration ----------
 COPY docker/php/php.ini   /usr/local/etc/php/conf.d/custom.ini

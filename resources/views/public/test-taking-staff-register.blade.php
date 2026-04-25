@@ -217,7 +217,7 @@
                         <div class="{{ $errors->has('upload_total') || $errors->has('submission') ? '' : 'hidden' }} rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700" data-upload-total-alert>{{ $errors->first('upload_total') ?: $errors->first('submission') }}</div>
 
                         <div>
-                            <label class="form-label">* រូបថតអវតារ</label>
+                            <label class="form-label">* រូបថត</label>
                             <input type="file" name="avatar_image" class="public-file-input block w-full" accept=".jpg,.jpeg,.png,.webp">
                             <p class="mt-2 text-sm text-slate-500">ប្រភេទឯកសារ JPG, PNG, WEBP និងទំហំមិនលើស 5 MB។</p>
                             @include('partials.field-error', ['name' => 'avatar_image'])
