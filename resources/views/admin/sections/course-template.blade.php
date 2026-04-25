@@ -24,7 +24,7 @@
             <p class="mt-3 text-sm leading-6 text-slate-500">កែប្រែមាតិកាគំរូខាងលើដែលប្រើនៅ `http://127.0.0.1:8000/registration/course`។</p>
         </div>
 
-        <form method="POST" action="{{ route('admin.portal-content.course-template.update') }}" enctype="multipart/form-data" class="mt-6 space-y-5" data-ajax-form data-ajax-redirect="{{ route('admin.home', ['section' => 'course-template']) }}" data-ajax-success-title="áž‡áŸ„áž‚აჟ‡áŸაჟ™" data-ajax-success-text="បានកែប្រែទម្រង់វគ្គសិក្សាដោយជោគជ័យ។">
+        <form method="POST" action="{{ route('admin.portal-content.course-template.update') }}" enctype="multipart/form-data" class="mt-6 space-y-5" data-ajax-form data-ajax-redirect="{{ route('admin.home', ['section' => 'course-template']) }}" data-ajax-success-title="ជោគაჟ‡័აჟ™" data-ajax-success-text="បានកែប្រែទម្រង់វគ្គសិក្សាដោយជោគជ័យ។">
             @csrf
             @method('PUT')
 

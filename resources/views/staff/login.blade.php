@@ -53,7 +53,7 @@
                     <div class="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4">
                         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">ត្រូវការជំនួយមែនទេ?</p>
                         <p class="mt-2 text-sm leading-6 text-slate-600">
-                            ប្រសិនបើឈ្មោះប្រើប្រាស់ ឬលេខសម្គាល់បុគ្គលិករបស់អ្នកមិនត្រឹមត្រូវ សូមទាក់ទងមកក្រុមរដ្ឋបាល ដើម្បីផ្ទៀងផ្ទាត់។
+                            ប្រសិនបើឈ្មោះប្រើប្រាស់ ឬអត្តលេខរបស់អ្នកមិនត្រឹមត្រូវ សូមទាក់ទងមកក្រុមរដ្ឋបាល ដើម្បីផ្ទៀងផ្ទាត់។
                         </p>
                     </div>
 

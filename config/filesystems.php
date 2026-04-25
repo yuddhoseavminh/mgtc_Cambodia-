@@ -15,6 +15,10 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
+    'uploads_disk' => env('UPLOADS_DISK', 'uploads'),
+
+    'legacy_uploads_disk' => env('LEGACY_UPLOADS_DISK', 'local'),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
@@ -33,6 +37,14 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
+            'serve' => true,
+            'throw' => false,
+            'report' => false,
+        ],
+
+        'uploads' => [
+            'driver' => 'local',
+            'root' => env('UPLOADS_ROOT', storage_path('app/uploads')),
             'serve' => true,
             'throw' => false,
             'report' => false,

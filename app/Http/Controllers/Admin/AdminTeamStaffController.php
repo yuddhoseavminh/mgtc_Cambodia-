@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\TeamStaff;
 use App\Models\TeamStaffDocumentRequirement;
 use App\Models\TeamStaffRank;
+use App\Support\UploadStorage;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -13,7 +14,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -87,7 +87,7 @@ class AdminTeamStaffController extends Controller
             });
         } catch (\Throwable $exception) {
             if ($avatarPath) {
-                Storage::disk('local')->delete($avatarPath);
+                UploadStorage::delete($avatarPath);
             }
 
             $this->deletePaths($storedDocumentPaths);
@@ -179,7 +179,7 @@ class AdminTeamStaffController extends Controller
             });
         } catch (\Throwable $exception) {
             if ($newAvatarPath) {
-                Storage::disk('local')->delete($newAvatarPath);
+                UploadStorage::delete($newAvatarPath);
             }
 
             $this->deletePaths($newDocumentPaths);
@@ -188,7 +188,7 @@ class AdminTeamStaffController extends Controller
         }
 
         if ($newAvatarPath && $oldAvatarPath) {
-            Storage::disk('local')->delete($oldAvatarPath);
+            UploadStorage::delete($oldAvatarPath);
         }
 
         $this->deletePaths($replacedDocumentPaths);
@@ -263,7 +263,7 @@ class AdminTeamStaffController extends Controller
     {
         abort_unless($teamStaff->hasStoredAvatar(), 404);
 
-        return response()->file(Storage::disk('local')->path($teamStaff->avatar_path));
+        return response()->file(UploadStorage::path($teamStaff->avatar_path));
     }
 
     public function showDocument(TeamStaff $teamStaff, int $documentIndex): StreamedResponse
@@ -271,10 +271,10 @@ class AdminTeamStaffController extends Controller
         $documents = collect($teamStaff->documents ?? [])->values();
         $document = $documents->get($documentIndex);
 
-        abort_unless($document && ! empty($document['path']) && Storage::disk('local')->exists($document['path']), 404);
+        abort_unless($document && UploadStorage::exists($document['path'] ?? null), 404);
 
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = Storage::disk('local');
+        $disk = UploadStorage::readDisk($document['path']);
 
         return $disk->response(
             $document['path'],
@@ -287,10 +287,10 @@ class AdminTeamStaffController extends Controller
         $documents = collect($teamStaff->documents ?? [])->values();
         $document = $documents->get($documentIndex);
 
-        abort_unless($document && ! empty($document['path']) && Storage::disk('local')->exists($document['path']), 404);
+        abort_unless($document && UploadStorage::exists($document['path'] ?? null), 404);
 
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = Storage::disk('local');
+        $disk = UploadStorage::readDisk($document['path']);
 
         return $disk->download($document['path'], $document['original_name'] ?? basename($document['path']));
     }
@@ -306,7 +306,7 @@ class AdminTeamStaffController extends Controller
         abort_unless($document, 404);
 
         if (! empty($document['path'])) {
-            Storage::disk('local')->delete($document['path']);
+            UploadStorage::delete($document['path']);
         }
 
         $teamStaff->update([
@@ -316,12 +316,51 @@ class AdminTeamStaffController extends Controller
                 ->all(),
         ]);
 
-        return redirect()
-            ->route('team-staff.show', $teamStaff)
+        return back()
             ->with('status_title', 'ជោគជ័យ')
             ->with('status', 'បានលុបឯកសារដោយជោគជ័យ។');
     }
 
+    public function updateDocumentStatus(
+        Request $request,
+        TeamStaff $teamStaff,
+        int $documentIndex,
+    ): RedirectResponse {
+        $validated = $request->validate([
+            'status' => ['required', Rule::in(['Pending', 'Approved', 'Rejected'])],
+        ]);
+
+        $documents = collect($teamStaff->documents ?? [])->values();
+        $document = $documents->get($documentIndex);
+
+        abort_unless($document, 404);
+
+        $uploader = strtolower((string) ($document['uploaded_by'] ?? ''));
+        if ($uploader !== 'staff') {
+            return back()->withErrors([
+                'documents' => 'Only staff-uploaded documents can be approved or rejected.',
+            ]);
+        }
+
+        $currentStatus = strtolower((string) ($document['status'] ?? 'pending'));
+        if ($currentStatus !== 'pending') {
+            return back()->withErrors([
+                'documents' => 'Only pending documents can be reviewed.',
+            ]);
+        }
+
+        $document['status'] = $validated['status'];
+        $document['reviewed_at'] = now()->toIso8601String();
+        $documents->put($documentIndex, $document);
+
+        $teamStaff->update([
+            'documents' => $documents->values()->all(),
+        ]);
+
+        return back()
+            ->with('status_title', 'Success')
+            ->with('status', 'Document status updated successfully.');
+    }
     public function showDocumentByRequirement(
         TeamStaff $teamStaff,
         TeamStaffDocumentRequirement $documentRequirement,
@@ -331,7 +370,7 @@ class AdminTeamStaffController extends Controller
         abort_unless($document, 404);
 
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = Storage::disk('local');
+        $disk = UploadStorage::readDisk($document['path']);
 
         return $disk->response(
             $document['path'],
@@ -348,7 +387,7 @@ class AdminTeamStaffController extends Controller
         abort_unless($document, 404);
 
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = Storage::disk('local');
+        $disk = UploadStorage::readDisk($document['path']);
 
         return $disk->download(
             $document['path'],
@@ -368,10 +407,10 @@ class AdminTeamStaffController extends Controller
         $documentFile = $validated['document_file'];
         abort_unless($documentFile instanceof UploadedFile, 422);
 
-        $path = $documentFile->storeAs(
+        $path = UploadStorage::storeAs(
+            $documentFile,
             'team-staff/'.$teamStaff->id.'/documents',
             $documentRequirement->slug.'-'.Str::uuid().'.'.$documentFile->getClientOriginalExtension(),
-            'local',
         );
 
         $documents = collect($teamStaff->documents ?? [])->values();
@@ -394,13 +433,12 @@ class AdminTeamStaffController extends Controller
                 'documents' => $documents->values()->all(),
             ]);
         } catch (\Throwable $exception) {
-            Storage::disk('local')->delete($path);
+            UploadStorage::delete($path);
 
             throw $exception;
         }
 
-        return redirect()
-            ->route('team-staff.show', $teamStaff)
+        return back()
             ->with('status_title', 'ជោគជ័យ')
             ->with('status', 'បានរក្សាទុកឯកសារដោយជោគជ័យ។');
     }
@@ -420,7 +458,7 @@ class AdminTeamStaffController extends Controller
         $document = $documents->get($documentIndex);
 
         if (! empty($document['path'])) {
-            Storage::disk('local')->delete($document['path']);
+            UploadStorage::delete($document['path']);
         }
 
         $teamStaff->update([
@@ -430,8 +468,7 @@ class AdminTeamStaffController extends Controller
                 ->all(),
         ]);
 
-        return redirect()
-            ->route('team-staff.show', $teamStaff)
+        return back()
             ->with('status_title', 'ជោគជ័យ')
             ->with('status', 'បានលុបឯកសារដោយជោគជ័យ។');
     }
@@ -448,6 +485,7 @@ class AdminTeamStaffController extends Controller
             'position' => trim((string) $request->input('position')),
             'role' => trim((string) $request->input('role')),
             'phone_number' => $this->normalizePhoneNumber($request->input('phone_number')),
+            'pob' => trim((string) $request->input('pob')),
         ]);
 
         return $request->validate([
@@ -460,6 +498,12 @@ class AdminTeamStaffController extends Controller
             'position' => ['required', 'string', 'max:255'],
             'role' => ['required', 'string', 'max:50'],
             'phone_number' => ['required', 'regex:/^\+?[0-9]{8,15}$/'],
+            'dob' => ['nullable', 'date'],
+            'date_of_enlistment' => ['nullable', 'date', 'before_or_equal:today'],
+            'pob' => ['nullable', Rule::in(array_values(config('military-registration.province_labels', [])))],
+            'training_code' => ['nullable', 'string', 'max:50'],
+            'leader_ref' => ['nullable', 'string', 'max:50'],
+            'origin_ref' => ['nullable', 'string', 'max:50'],
             'documents' => ['nullable', 'array'],
             'documents.*' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:5120'],
         ], [
@@ -491,10 +535,10 @@ class AdminTeamStaffController extends Controller
                     return null;
                 }
 
-                $path = $document->storeAs(
+                $path = UploadStorage::storeAs(
+                    $document,
                     $folder,
                     $documentRequirement->slug.'-'.Str::uuid().'.'.$document->getClientOriginalExtension(),
-                    'local',
                 );
 
                 $storedPaths[] = $path;
@@ -526,17 +570,17 @@ class AdminTeamStaffController extends Controller
             abort(422, 'ត្រូវបញ្ចូលរូបភាពប្រវត្តិរូប។');
         }
 
-        return $avatar->storeAs(
+        return UploadStorage::storeAs(
+            $avatar,
             $folder,
             'avatar-'.Str::uuid().'.'.$avatar->getClientOriginalExtension(),
-            'local',
         );
     }
 
     private function deleteAvatar(TeamStaff $teamStaff): void
     {
         if ($teamStaff->avatar_path) {
-            Storage::disk('local')->delete($teamStaff->avatar_path);
+            UploadStorage::delete($teamStaff->avatar_path);
         }
     }
 
@@ -550,7 +594,15 @@ class AdminTeamStaffController extends Controller
      */
     private function roleOptions(): array
     {
-        return ['Admin', 'Manager', 'Staff', 'Viewer'];
+        return TeamStaff::query()
+            ->whereNotNull('role')
+            ->select('role')
+            ->distinct()
+            ->orderBy('role')
+            ->pluck('role')
+            ->filter()
+            ->values()
+            ->all();
     }
 
     /**
@@ -585,7 +637,7 @@ class AdminTeamStaffController extends Controller
         collect($documents)
             ->pluck('path')
             ->filter()
-            ->each(fn ($path) => Storage::disk('local')->delete($path));
+            ->each(fn ($path) => UploadStorage::delete($path));
     }
 
     /**
@@ -595,7 +647,7 @@ class AdminTeamStaffController extends Controller
     {
         collect($paths)
             ->filter()
-            ->each(fn (string $path) => Storage::disk('local')->delete($path));
+            ->each(fn (string $path) => UploadStorage::delete($path));
     }
 
     private function nextSequenceNo(bool $lock = false): int
@@ -698,10 +750,11 @@ class AdminTeamStaffController extends Controller
         $document = collect($teamStaff->documents ?? [])
             ->first(fn (array $entry) => ($entry['requirement_slug'] ?? null) === $documentRequirement->slug);
 
-        if (! $document || empty($document['path']) || ! Storage::disk('local')->exists($document['path'])) {
+        if (! $document || empty($document['path']) || ! UploadStorage::exists($document['path'])) {
             return null;
         }
 
         return $document;
     }
 }
+

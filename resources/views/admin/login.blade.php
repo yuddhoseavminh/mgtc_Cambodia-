@@ -12,7 +12,7 @@
                     @csrf
                     <div>
                         <label class="form-label">Email / Login ID / Username</label>
-                        <input type="text" name="email" value="{{ old('email', old('login', old('username'))) }}" class="form-input" placeholder="admin@gmail.com or username">
+                        <input type="text" name="email" value="{{ old('email', old('login', old('username'))) }}" class="form-input" placeholder="Enter email, login ID, or username" autocomplete="username">
                         @include('partials.field-error', ['name' => 'email'])
                     </div>
                     <div>

@@ -5,15 +5,17 @@
         'overview'                    => ['subtitle' => 'ទិដ្ឋភាពទូទៅ',             'title' => 'ផ្ទាំងគ្រប់គ្រង'],
         'reports'                     => ['subtitle' => 'វិភាគទិន្នន័យ',             'title' => 'របាយការណ៍'],
         'applications'                => ['subtitle' => 'ការចុះឈ្មោះវគ្គសិក្សា',    'title' => 'ពាក្យស្នើសុំ'],
+        'registration-form'           => ['subtitle' => 'ការចុះឈ្មោះវគ្គសិក្សា',    'title' => 'សមាជិកចុះឈ្មោះសិក្ខាកាម'],
         'documents'                   => ['subtitle' => 'ការចុះឈ្មោះវគ្គសិក្សា',    'title' => 'ឯកសារ'],
         'courses'                     => ['subtitle' => 'ការចុះឈ្មោះវគ្គសិក្សា',    'title' => 'វគ្គសិក្សា'],
         'ranks'                       => ['subtitle' => 'ការចុះឈ្មោះវគ្គសិក្សា',    'title' => 'ឋានន្តរស័ក្តិ'],
         'levels'                      => ['subtitle' => 'ការចុះឈ្មោះវគ្គសិក្សា',    'title' => 'កម្រិតសិក្សា'],
         'design-template'             => ['subtitle' => 'ប្រព័ន្ធ',                  'title' => 'រចនាទំព័រដើម'],
+        'staff-team-template'         => ['subtitle' => 'ប្រព័ន្ធ',                  'title' => 'គំរូបុគ្គលិកក្រុមការងារទី៣'],
         'course-template'             => ['subtitle' => 'ប្រព័ន្ធ',                  'title' => 'គំរូវគ្គសិក្សា'],
         'staff-team'                  => ['subtitle' => 'បុគ្គលិកក្រុមការងារទី៣',            'title' => 'បុគ្គលិកក្រុមការងារទី៣'],
         'staff-team-ranks'            => ['subtitle' => 'បុគ្គលិកក្រុមការងារទី៣',            'title' => 'ឋានន្តរស័ក្តិយោធាបុគ្គលិក'],
-        'staff-team-documents'        => ['subtitle' => 'បុគ្គលិកក្រុមការងារទី៣',            'title' => 'ឯកសារបុគ្គលិកក្រុម'],
+        'staff-team-documents'        => ['subtitle' => 'បុគ្គលិកក្រុមការងារទី៣',            'title' => 'ឯកសារបុគ្គលិកក្រុមការងារទី៣'],
         'staff-management'            => ['subtitle' => 'បុគ្គលិកក្រុមការងារទី៣',            'title' => 'គ្រប់គ្រងបុគ្គលិកក្រុមការងារទី៣'],
         'test-taking-staff'           => ['subtitle' => 'បុគ្គលិកសាកល្បង',         'title' => 'បុគ្គលិកសាកល្បង'],
         'test-taking-staff-template'  => ['subtitle' => 'ប្រព័ន្ធ',                  'title' => 'គំរូបុគ្គលិកសាកល្បង'],
@@ -23,8 +25,11 @@
         'users'                       => ['subtitle' => 'ប្រព័ន្ធ',                  'title' => 'អ្នកប្រើប្រាស់'],
         'profile'                     => ['subtitle' => 'ប្រព័ន្ធ',                  'title' => 'ប្រវត្តិរូប'],
     ];
-    $resolvedSubtitle = $fallbackMeta[$currentSection]['subtitle'] ?? ($subtitle ?? 'អ្នកគ្រប់គ្រង');
-    $resolvedTitle    = $fallbackMeta[$currentSection]['title']    ?? ($title    ?? 'ផ្ទាំងគ្រប់គ្រង');
+    $resolvedSubtitle = $subtitle ?? ($fallbackMeta[$currentSection]['subtitle'] ?? 'អ្នកគ្រប់គ្រង');
+    $resolvedTitle    = $title ?? ($fallbackMeta[$currentSection]['title'] ?? 'ផ្ទាំងគ្រប់គ្រង');
+    $topbarSearchSection = in_array($currentSection, ['applications', 'registration-form', 'reports'], true)
+        ? $currentSection
+        : 'applications';
 @endphp
 
 <header class="admin-topbar">
@@ -50,13 +55,13 @@
         </div>
     </div>
 
-    {{-- -- Right: search � bell � avatar -- --}}
+    {{-- -- Right: search + bell + avatar -- --}}
     <div class="admin-topbar__action-cluster">
 
         {{-- Search --}}
         <form method="GET" action="{{ route('admin.home') }}"
             class="admin-topbar__search hidden md:flex">
-            <input type="hidden" name="section" value="{{ $currentSection === 'reports' ? 'reports' : 'applications' }}">
+            <input type="hidden" name="section" value="{{ $topbarSearchSection }}">
             <svg class="admin-topbar__search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2">
                 <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
             </svg>

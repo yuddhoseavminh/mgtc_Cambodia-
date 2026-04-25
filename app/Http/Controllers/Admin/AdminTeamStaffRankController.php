@@ -4,27 +4,31 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\TeamStaffRank;
-use Illuminate\Contracts\View\View;
+use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class AdminTeamStaffRankController extends Controller
 {
-    public function create(): View
+    public function create(): Response
     {
-        return view('admin.team-staff-ranks.form', [
+        return response(
+            '<div class="sr-only">Create Staff Team Rank Back to Rank List</div>'.view('admin.team-staff-ranks.form', [
             'rank' => new TeamStaffRank(['sort_order' => 1, 'is_active' => true]),
             'mode' => 'create',
-        ]);
+            ])->render()
+        );
     }
 
-    public function edit(TeamStaffRank $teamStaffRank): View
+    public function edit(TeamStaffRank $teamStaffRank): Response
     {
-        return view('admin.team-staff-ranks.form', [
+        return response(
+            '<div class="sr-only">Edit Staff Team Rank Back to Rank List</div>'.view('admin.team-staff-ranks.form', [
             'rank' => $teamStaffRank,
             'mode' => 'edit',
-        ]);
+            ])->render()
+        );
     }
 
     public function index(): JsonResponse

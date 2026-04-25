@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Application;
+use App\Support\UploadStorage;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class AdminApplicationController extends Controller
@@ -58,6 +60,21 @@ class AdminApplicationController extends Controller
         ]);
     }
 
+    public function edit(Application $application): View
+    {
+        $application->load([
+            'rank:id,name_kh,name_en',
+            'course:id,name',
+            'culturalLevel:id,name',
+            'applicationDocuments.documentRequirement:id,name_kh,name_en,slug,is_protected',
+        ]);
+
+        return view('admin.application-edit', [
+            'application' => $application,
+            ...$this->formOptions(),
+        ]);
+    }
+
     public function update(Request $request, Application $application): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
@@ -82,6 +99,66 @@ class AdminApplicationController extends Controller
         return redirect()
             ->route('admin.applications.show', $application)
             ->with('status', 'បានកែប្រែការពិនិត្យពាក្យស្នើសុំដោយជោគជ័យ។');
+    }
+
+    public function destroy(Request $request, Application $application): \Illuminate\Http\Response|JsonResponse|RedirectResponse
+    {
+        $application->loadMissing('applicationDocuments');
+
+        $paths = array_values(array_filter([
+            $application->id_card_path,
+            $application->family_book_path,
+            $application->certificate_path,
+            $application->other_document_path,
+            ...$application->applicationDocuments
+                ->pluck('file_path')
+                ->filter()
+                ->all(),
+        ]));
+
+        DB::transaction(function () use ($application) {
+            $application->applicationDocuments()->delete();
+            $application->delete();
+        });
+
+        UploadStorage::delete($paths);
+
+        if ($request->expectsJson()) {
+            return response()->noContent();
+        }
+
+        return redirect()
+            ->route('admin.home', ['section' => 'applications'])
+            ->with('status', 'បានលុបពាក្យស្នើសុំដោយជោគជ័យ។');
+    }
+
+    public function replace(Request $request, Application $application): RedirectResponse
+    {
+        $validated = $request->validate([
+            'khmer_name' => ['required', 'string', 'max:255'],
+            'latin_name' => ['required', 'string', 'max:255'],
+            'id_number' => ['required', 'string', 'max:100'],
+            'rank_id' => ['required', Rule::exists('ranks', 'id')],
+            'gender' => ['nullable', Rule::in(config('military-registration.genders'))],
+            'date_of_birth' => ['required', 'date', 'before:today'],
+            'date_of_enlistment' => ['required', 'date', 'before_or_equal:today'],
+            'position' => ['required', 'string', 'max:255'],
+            'unit' => ['required', 'string', 'max:255'],
+            'course_id' => ['required', Rule::exists('courses', 'id')],
+            'cultural_level_id' => ['required', Rule::exists('cultural_levels', 'id')],
+            'place_of_birth' => ['required', Rule::in(config('military-registration.provinces'))],
+            'current_address' => ['required', 'string', 'max:1000'],
+            'family_situation' => ['required', Rule::in(config('military-registration.family_situations'))],
+            'phone_number' => ['required', 'regex:/^\+?[0-9]{8,15}$/'],
+            'status' => ['required', Rule::in(config('military-registration.application_statuses'))],
+            'admin_notes' => ['nullable', 'string', 'max:1500'],
+        ]);
+
+        $application->update($validated);
+
+        return redirect()
+            ->route('admin.applications.show', $application)
+            ->with('status', 'បានកែប្រែព័ត៌មានពាក្យស្នើសុំដោយជោគជ័យ។');
     }
 
     /**
@@ -145,6 +222,38 @@ class AdminApplicationController extends Controller
                         : null,
                 ])
                 ->values(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formOptions(): array
+    {
+        return [
+            'ranks' => \App\Models\Rank::query()
+                ->where('is_active', true)
+                ->ordered()
+                ->get(),
+            'courses' => \App\Models\Course::query()
+                ->where('is_active', true)
+                ->ordered()
+                ->get(),
+            'culturalLevels' => \App\Models\CulturalLevel::query()
+                ->where('is_active', true)
+                ->ordered()
+                ->get(),
+            'statuses' => config('military-registration.application_statuses'),
+            'provinces' => config('military-registration.provinces'),
+            'provinceLabels' => config('military-registration.province_labels'),
+            'familySituations' => config('military-registration.family_situations'),
+            'familySituationLabels' => config('military-registration.family_situation_labels'),
+            'genders' => config('military-registration.genders'),
+            'genderLabels' => config('military-registration.gender_labels'),
+            'documentRequirements' => \App\Models\DocumentRequirement::query()
+                ->where('is_active', true)
+                ->ordered()
+                ->get(),
         ];
     }
 }

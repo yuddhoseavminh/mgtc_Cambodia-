@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AdminCulturalLevelController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminDocumentController;
 use App\Http\Controllers\Admin\AdminDocumentRequirementController;
+use App\Http\Controllers\Admin\AdminItemController;
 use App\Http\Controllers\Admin\AdminPortalContentController;
 use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\AdminRankController;
@@ -38,6 +39,7 @@ Route::get('/registration/test-taking-staff', PublicTestTakingStaffPageControlle
 Route::get('/portal-banner-image', PortalBannerImageController::class)->name('portal.banner-image');
 Route::get('/portal-banner-image/course', [PortalBannerImageController::class, '__invoke'])->defaults('type', 'course')->name('portal.course-banner-image');
 Route::get('/portal-banner-image/test-taking-staff', [PortalBannerImageController::class, '__invoke'])->defaults('type', 'test-taking-staff')->name('portal.test-taking-staff-banner-image');
+Route::get('/staff-logo-image', [PortalBannerImageController::class, '__invoke'])->defaults('type', 'staff-logo')->name('portal.staff-logo-image');
 
 Route::get('/form-options', [PublicFormOptionController::class, 'index'])->name('form-options');
 Route::post('/applications', [PublicApplicationController::class, 'store'])->middleware('throttle:public-submissions')->name('applications.store');
@@ -77,6 +79,9 @@ Route::prefix('admin')->group(function () {
 
     Route::middleware(['auth', EnsureAdmin::class])->group(function () {
         Route::get('/', [AdminPageController::class, 'index'])->name('admin.home');
+        Route::get('/design-template', [AdminPageController::class, 'index'])->defaults('section', 'design-template')->name('admin.design-template');
+        Route::get('/course-template', [AdminPageController::class, 'index'])->defaults('section', 'course-template')->name('admin.course-template');
+        Route::get('/test-taking-staff-template', [AdminPageController::class, 'index'])->defaults('section', 'test-taking-staff-template')->name('admin.test-taking-staff-template');
         Route::get('/users', [AdminPageController::class, 'index'])->defaults('section', 'users')->name('admin.users.index');
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
         Route::get('/portal-content', [AdminPortalContentController::class, 'show'])->name('admin.portal-content.show');
@@ -84,13 +89,23 @@ Route::prefix('admin')->group(function () {
         Route::put('/portal-content/course-template', [AdminPortalContentController::class, 'updateCourseTemplate'])->name('admin.portal-content.course-template.update');
         Route::put('/portal-content/test-taking-staff-template', [AdminPortalContentController::class, 'updateTestTakingStaffTemplate'])->name('admin.portal-content.test-taking-staff-template.update');
         Route::put('/profile', [AdminProfileController::class, 'update'])->name('admin.profile.update');
+        Route::resource('items', AdminItemController::class)->names('admin.items');
         Route::get('/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
         Route::post('/users', [AdminUserController::class, 'store'])->name('admin.users.store');
         Route::put('/users/{user}', [AdminUserController::class, 'update'])->name('admin.users.update');
         Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
         Route::get('/applications', [AdminApplicationController::class, 'index'])->name('admin.applications.index');
         Route::get('/applications/{application}', [AdminApplicationController::class, 'show'])->name('admin.applications.show');
+        Route::get('/applications/{application}/edit', [AdminApplicationController::class, 'edit'])->name('admin.applications.edit');
+        Route::put('/applications/{application}', [AdminApplicationController::class, 'replace'])->name('admin.applications.replace');
         Route::patch('/applications/{application}', [AdminApplicationController::class, 'update'])->name('admin.applications.update');
+        Route::delete('/applications/{application}', [AdminApplicationController::class, 'destroy'])->name('admin.applications.destroy');
+        Route::post('/applications/{application}/documents', [AdminDocumentController::class, 'store'])
+            ->name('admin.documents.store');
+        Route::put('/applications/{application}/documents/{applicationDocument}', [AdminDocumentController::class, 'update'])
+            ->name('admin.documents.update');
+        Route::delete('/applications/{application}/documents/{applicationDocument}', [AdminDocumentController::class, 'destroy'])
+            ->name('admin.documents.destroy');
         Route::get('/applications/{application}/documents/{applicationDocument}', [AdminDocumentController::class, 'show'])
             ->name('admin.documents.show');
         Route::get('/applications/{application}/documents/{applicationDocument}/download', [AdminDocumentController::class, 'download'])
@@ -106,6 +121,9 @@ Route::prefix('admin')->group(function () {
         Route::delete('/team-staff/{teamStaff}/documents/{documentIndex}', [AdminTeamStaffController::class, 'destroyDocument'])
             ->whereNumber('documentIndex')
             ->name('team-staff.documents.destroy');
+        Route::patch('/team-staff/{teamStaff}/documents/{documentIndex}/status', [AdminTeamStaffController::class, 'updateDocumentStatus'])
+            ->whereNumber('documentIndex')
+            ->name('team-staff.documents.update-status');
         Route::post('/team-staff/{teamStaff}/documents/requirements/{documentRequirement}', [AdminTeamStaffController::class, 'upsertDocumentByRequirement'])
             ->name('team-staff.documents.upsert-by-requirement');
         Route::get('/team-staff/{teamStaff}/documents/requirements/{documentRequirement}', [AdminTeamStaffController::class, 'showDocumentByRequirement'])
@@ -128,6 +146,8 @@ Route::prefix('admin')->group(function () {
             ->name('test-taking-staff-registrations.documents.update');
         Route::delete('/test-taking-staff-registrations/{testTakingStaffRegistration}/documents/{document}', [AdminTestTakingStaffRegistrationController::class, 'destroyDocument'])
             ->name('test-taking-staff-registrations.documents.destroy');
+        Route::post('/test-taking-staff-registrations/{testTakingStaffRegistration}/documents', [AdminTestTakingStaffRegistrationController::class, 'storeDocument'])
+            ->name('test-taking-staff-registrations.documents.store');
         Route::get('/test-taking-staff-registrations/{testTakingStaffRegistration}', [AdminTestTakingStaffRegistrationController::class, 'show'])
             ->name('admin.test-taking-staff-registrations.show');
         Route::get('/test-taking-staff-registrations/{testTakingStaffRegistration}/edit', [AdminTestTakingStaffRegistrationController::class, 'edit'])

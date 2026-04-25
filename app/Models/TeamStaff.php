@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Support\UploadStorage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class TeamStaff extends Authenticatable
@@ -26,6 +26,12 @@ class TeamStaff extends Authenticatable
         'position',
         'role',
         'phone_number',
+        'dob',
+        'date_of_enlistment',
+        'pob',
+        'training_code',
+        'leader_ref',
+        'origin_ref',
         'documents',
         'username',
         'password',
@@ -48,6 +54,8 @@ class TeamStaff extends Authenticatable
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
             'password' => 'hashed',
+            'dob' => 'date',
+            'date_of_enlistment' => 'date',
             'password_changed_at' => 'datetime',
             'last_login_at' => 'datetime',
         ];
@@ -60,7 +68,7 @@ class TeamStaff extends Authenticatable
 
     public function hasStoredAvatar(): bool
     {
-        return filled($this->avatar_path) && Storage::disk('local')->exists($this->avatar_path);
+        return UploadStorage::exists($this->avatar_path);
     }
 
     public function displayName(): string

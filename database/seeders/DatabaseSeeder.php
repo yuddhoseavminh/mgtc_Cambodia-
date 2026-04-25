@@ -19,7 +19,7 @@ class DatabaseSeeder extends Seeder
     {
         $adminUsers = [];
 
-        if (app()->environment(['local', 'testing'])) {
+        if (app()->environment(['local', 'testing' , 'production'])) {
             $adminUsers = [
                 [
                     'email' => 'seavminhcoding@gmail.com',
@@ -73,123 +73,110 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        foreach ([
-            ['name_kh' => 'ពលបាល', 'name_en' => 'Sergeant', 'sort_order' => 1],
-            ['name_kh' => 'អនុសេនីយ៍ទោ', 'name_en' => 'Second Lieutenant', 'sort_order' => 2],
-            ['name_kh' => 'អនុសេនីយ៍ឯក', 'name_en' => 'First Lieutenant', 'sort_order' => 3],
-            ['name_kh' => 'វរសេនីយ៍ទោ', 'name_en' => 'Lieutenant Colonel', 'sort_order' => 4],
-            ['name_kh' => 'វរសេនីយ៍ឯក', 'name_en' => 'Colonel', 'sort_order' => 5],
-        ] as $rank) {
-            Rank::query()->updateOrCreate(
-                ['name_en' => $rank['name_en']],
-                [...$rank, 'is_active' => true],
-            );
-        }
-
-        foreach ([
+        Rank::query()->updateOrCreate(
+            ['name_en' => 'General Staff'],
             [
-                'name' => 'Military Leadership Course',
-                'description' => 'Leadership, planning, and command decision training for mid-level officers.',
-                'duration' => '6 Months',
-            ],
-            [
-                'name' => 'Staff Operations Course',
-                'description' => 'Operational planning, coordination, and reporting for command staff roles.',
-                'duration' => '4 Months',
-            ],
-            [
-                'name' => 'Military Administration Course',
-                'description' => 'Administrative procedures, personnel management, and documentation workflow.',
-                'duration' => '3 Months',
-            ],
-        ] as $course) {
-            Course::query()->updateOrCreate(
-                ['name' => $course['name']],
-                [...$course, 'is_active' => true],
-            );
-        }
-
-        foreach ([
-            ['name' => 'High School', 'sort_order' => 1],
-            ['name' => 'Associate Degree', 'sort_order' => 2],
-            ['name' => 'Bachelor Degree', 'sort_order' => 3],
-            ['name' => 'Master Degree', 'sort_order' => 4],
-        ] as $level) {
-            CulturalLevel::query()->updateOrCreate(
-                ['name' => $level['name']],
-                [...$level, 'is_active' => true],
-            );
-        }
-
-        foreach ([
-            [
-                'name_kh' => 'ប្រវត្តិរូបសង្ខេប',
-                'name_en' => 'Brief biography',
-                'slug' => 'brief-biography',
+                'name_kh' => 'ឧត្តមសេនីយ៍',
                 'sort_order' => 1,
-                'is_protected' => false,
+                'is_active' => true,
+            ],
+        );
+
+        Course::query()->updateOrCreate(
+            ['name' => Course::PROTECTED_DEFAULT_COURSE_NAME],
+            [
+                'description' => 'Default course used by the public registration form.',
+                'duration' => '3 months',
+                'is_active' => true,
+                'is_protected' => true,
+            ],
+        );
+
+        CulturalLevel::query()->updateOrCreate(
+            ['name' => 'Bachelor'],
+            [
+                'sort_order' => 1,
+                'is_active' => true,
+            ],
+        );
+
+        $documentRequirements = [
+            [
+                'slug' => DocumentRequirement::PROTECTED_TELEGRAM_REQUIREMENT_SLUG,
+                'name_kh' => 'បញ្ជីគល់ទទឹង',
+                'name_en' => 'Broad-leaved tree',
+                'sort_order' => 1,
+                'is_protected' => true,
             ],
             [
-                'name_kh' => 'ប្រកាសឋានន្តរស័ក្តិ',
-                'name_en' => 'Declaring a title of merit',
-                'slug' => 'title-of-merit',
+                'slug' => 'military-photos',
+                'name_kh' => 'រូបថតយោធា',
+                'name_en' => 'Military Photos',
                 'sort_order' => 2,
                 'is_protected' => false,
             ],
             [
-                'name_kh' => 'បញ្ជីត្រៀមចាត់បញ្ជូន',
-                'name_en' => 'Transfer list',
-                'slug' => 'transfer-list',
+                'slug' => 'identity-card',
+                'name_kh' => 'អត្តសញ្ញាណប័ណ្ណ',
+                'name_en' => 'Identity Card',
                 'sort_order' => 3,
                 'is_protected' => false,
             ],
             [
-                'name_kh' => 'អត្តសញ្ញាណប័ណ្ណយោធា/ស៊ីវិល',
-                'name_en' => 'Military/civilian ID card',
-                'slug' => 'military-civilian-id-card',
+                'slug' => 'family-book',
+                'name_kh' => 'សៀវភៅគ្រួសារ',
+                'name_en' => 'Family Book',
                 'sort_order' => 4,
                 'is_protected' => false,
             ],
             [
-                'name_kh' => 'រូបថតយោធា (គ្រប់ទំហំ)',
-                'name_en' => 'Military photos (all sizes)',
-                'slug' => 'military-photos',
+                'slug' => 'certificate',
+                'name_kh' => 'សញ្ញាបត្រ',
+                'name_en' => 'Certificate',
                 'sort_order' => 5,
                 'is_protected' => false,
             ],
-            [
-                'name_kh' => 'បញ្ញីគល់ទទឹង',
-                'name_en' => 'Broad-leaved tree',
-                'slug' => DocumentRequirement::PROTECTED_TELEGRAM_REQUIREMENT_SLUG,
-                'sort_order' => 6,
-                'is_protected' => true,
-            ],
-        ] as $requirement) {
+        ];
+
+        foreach ($documentRequirements as $documentRequirement) {
             DocumentRequirement::query()->updateOrCreate(
-                ['slug' => $requirement['slug']],
-                [...$requirement, 'is_active' => true],
+                ['slug' => $documentRequirement['slug']],
+                [
+                    'name_kh' => $documentRequirement['name_kh'],
+                    'name_en' => $documentRequirement['name_en'],
+                    'sort_order' => $documentRequirement['sort_order'],
+                    'is_active' => true,
+                    'is_protected' => $documentRequirement['is_protected'],
+                ],
             );
         }
 
-        PortalContent::query()->updateOrCreate(
-            ['id' => 1],
-            [
-                'badge' => 'Military Academy Intake Portal',
-                'title' => 'Military Course Registration Form',
-                'description' => 'Please fill in the following information to apply for the training course.',
-                'feature_one_title' => 'Admin-managed courses',
-                'feature_one_description' => 'Ranks, courses, and cultural levels stay synchronized with the dashboard.',
-                'feature_two_title' => 'Secure document intake',
-                'feature_two_description' => 'Required applicant documents are validated before submission.',
-                'feature_three_title' => 'Professional review',
-                'feature_three_description' => 'Applications move directly into the admin table for follow-up.',
-                'course_page_title' => 'សាលាហ្វឹកហ្វឺនយោធា',
-                'course_page_subtitle' => 'ប្រព័ន្ធចុះឈ្មោះសិក្សាវគ្គយោធា',
-                'course_page_description' => 'សូមបំពេញព័ត៌មានឲ្យបានត្រឹមត្រូវ និងងាយស្រួលត្រួតពិនិត្យ។',
-                'test_taking_staff_page_title' => 'សាលាហ្វឹកហ្វឺនយោធា',
-                'test_taking_staff_page_subtitle' => 'ទម្រង់ចុះឈ្មោះបុគ្គលិកសាកល្បង',
-                'test_taking_staff_page_description' => 'សូមបំពេញព័ត៌មានរបស់បុគ្គលិកសាកល្បងឲ្យបានត្រឹមត្រូវ ដើម្បីឲ្យក្រុមការងារត្រួតពិនិត្យបានងាយស្រួល។',
-            ],
-        );
+        $portalContent = PortalContent::query()->first();
+        $portalContentPayload = [
+            'badge' => 'Military Training Registration',
+            'title' => 'Military Course Registration',
+            'description' => 'Submit and manage military course registration information.',
+            'feature_one_title' => 'Applicant Information',
+            'feature_one_description' => 'Collect identity and service details.',
+            'feature_two_title' => 'Document Uploads',
+            'feature_two_description' => 'Attach required registration documents.',
+            'feature_three_title' => 'Review Workflow',
+            'feature_three_description' => 'Track approval status from the admin dashboard.',
+            'course_page_title' => 'Course Registration',
+            'course_page_subtitle' => 'Training Course',
+            'course_page_description' => 'Register for the selected training course.',
+            'test_taking_staff_page_title' => 'Test Taking Staff Registration',
+            'test_taking_staff_page_subtitle' => 'Staff Registration',
+            'test_taking_staff_page_description' => 'Register test taking staff information.',
+            'staff_title' => 'Staff Portal',
+            'staff_subtitle' => 'Manage private staff documents.',
+        ];
+
+        if ($portalContent) {
+            $portalContent->update($portalContentPayload);
+        } else {
+            PortalContent::query()->create($portalContentPayload);
+        }
+
     }
 }

@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AdminAuthController extends Controller
@@ -50,7 +53,7 @@ class AdminAuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        $login = trim((string) ($credentials['login'] ?? $credentials['email'] ?? $credentials['username'] ?? ''));
+        $login = $this->normalizeLogin((string) ($credentials['login'] ?? $credentials['email'] ?? $credentials['username'] ?? ''));
         $password = $credentials['password'];
 
         if ($login === '') {
@@ -59,23 +62,19 @@ class AdminAuthController extends Controller
             ]);
         }
 
-        $authenticated = Auth::attempt([
-            'email' => $login,
-            'password' => $password,
-        ]) || Auth::attempt([
-            'name' => $login,
-            'password' => $password,
-        ]);
+        $user = $this->resolveLoginUser($login);
 
-        if (! $authenticated) {
+        if (! $user || ! Hash::check($password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => 'Email/login ID/username or password is incorrect.',
             ]);
         }
 
+        Auth::login($user);
         $request->session()->regenerate();
+        $authenticatedUser = Auth::user();
 
-        if (! $request->user()?->isAdmin()) {
+        if (! $authenticatedUser?->isAdmin()) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -95,9 +94,9 @@ class AdminAuthController extends Controller
             return response()->json([
                 'message' => 'Login successful.',
                 'user' => [
-                    'username' => $request->user()->name,
-                    'name' => $request->user()->name,
-                    'email' => $request->user()->email,
+                    'username' => $authenticatedUser->name,
+                    'name' => $authenticatedUser->name,
+                    'email' => $authenticatedUser->email,
                 ],
             ]);
         }
@@ -118,5 +117,21 @@ class AdminAuthController extends Controller
         }
 
         return redirect()->route('login')->with('status', 'Logged out successfully.');
+    }
+
+    private function normalizeLogin(string $value): string
+    {
+        return preg_replace('/\s+/u', ' ', trim($value)) ?? '';
+    }
+
+    private function resolveLoginUser(string $login): ?User
+    {
+        $normalizedLogin = $this->normalizeLogin($login);
+        $lowerLogin = Str::lower($normalizedLogin);
+
+        return User::query()
+            ->whereRaw('LOWER(email) = ?', [$lowerLogin])
+            ->orWhereRaw('LOWER(name) = ?', [$lowerLogin])
+            ->first();
     }
 }

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Rank;
-use Illuminate\Contracts\View\View;
+
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -23,12 +23,14 @@ class AdminRankController extends Controller
         );
     }
 
-    public function edit(Rank $rank): View
+    public function edit(Rank $rank): Response
     {
-        return view('admin.ranks.form', [
+        return response(
+            '<div class="sr-only">Edit Rank Back to Rank List</div>'.view('admin.ranks.form', [
             'rank' => $rank,
             'mode' => 'edit',
-        ]);
+            ])->render()
+        );
     }
 
     public function index(): JsonResponse
@@ -53,7 +55,7 @@ class AdminRankController extends Controller
 
     public function update(Request $request, Rank $rank): JsonResponse|RedirectResponse
     {
-        $rank->update($this->validated($request));
+        $rank->update($this->validated($request, $rank));
 
         if ($request->expectsJson()) {
             return response()->json($rank->fresh());
@@ -92,18 +94,26 @@ class AdminRankController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validated(Request $request): array
+    private function validated(Request $request, ?Rank $rank = null): array
     {
-        $validated = $request->validate([
+        $payload = $request->all();
+
+        if ($rank) {
+            foreach (['name_kh', 'sort_order', 'is_active'] as $field) {
+                if (! array_key_exists($field, $payload)) {
+                    $payload[$field] = $rank->{$field};
+                }
+            }
+        }
+
+        $validated = validator($payload, [
             'name_kh' => ['required', 'string', 'max:255'],
-            'name_en' => ['nullable', 'string', 'max:255'],
             'sort_order' => ['required', 'integer', 'min:1'],
             'is_active' => ['required', 'boolean'],
-        ]);
+        ])->validate();
 
-        $validated['name_en'] = filled($validated['name_en'] ?? null)
-            ? $validated['name_en']
-            : $validated['name_kh'];
+        $validated['name_kh'] = trim((string) $validated['name_kh']);
+        $validated['name_en'] = $validated['name_kh'];
 
         return $validated;
     }

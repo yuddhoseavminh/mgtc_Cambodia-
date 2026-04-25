@@ -24,8 +24,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('admin-login', function (Request $request) {
+            $login = trim((string) ($request->input('login', $request->input('email', $request->input('username', '')))));
+
             return Limit::perMinute(5)
-                ->by(strtolower($request->input('email', $request->input('username', ''))).'|'.$request->ip())
+                ->by(strtolower($login).'|'.$request->ip())
                 ->response(function () use ($request) {
                     if ($request->expectsJson()) {
                         return response()->json([

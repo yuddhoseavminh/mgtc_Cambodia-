@@ -21,7 +21,7 @@
             'អត្តលេខ' => $application->id_number,
             'ឋានន្តរស័ក្តិ' => $application->rank?->name_kh,
             'ថ្ងៃខែឆ្នាំកំណើត' => optional($application->date_of_birth)?->khFormat('d/m/Y'),
-            'ថ្ងៃចូលបម្រើ' => optional($application->date_of_enlistment)?->khFormat('d/m/Y'),
+            'ថ្ងៃចូលបម្រើកងទ័ព' => optional($application->date_of_enlistment)?->khFormat('d/m/Y'),
             'មុខតំណែង / ភារកិច្ច' => $application->position,
             'អង្គភាព' => $application->unit,
             'វគ្គសិក្សាដាក់ពាក្យ' => $application->course?->name,
@@ -33,6 +33,7 @@
         ];
     @endphp 
     @php
+        $reviewComment = old('admin_notes', $application->admin_notes);
         $documentGroups = collect($application->documents())
             ->groupBy('label')
             ->map(fn ($documents, $label) => [
@@ -145,21 +146,22 @@
                             <div class="space-y-6">
                                 <div class="dashboard-surface p-6">
                                     <div class="flex flex-wrap gap-3">
+                                        <a href="{{ route('admin.applications.edit', $application) }}" class="inline-flex flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">កែប្រែ</a>
                                         @if ($application->status !== 'Approved')
-                                            <form method="POST" action="{{ route('admin.applications.update', $application) }}" class="flex-1" data-ajax-form data-ajax-redirect="{{ route('admin.applications.show', $application) }}" data-ajax-success-title="áž‡áŸ„áž‚áž‡áŸაჟ™" data-ajax-success-text="បានអនុម័តពាក្យស្នើសុំដោយជោគជ័យ។">
+                                            <form method="POST" action="{{ route('admin.applications.update', $application) }}" class="flex-1" data-ajax-form data-ajax-redirect="{{ route('admin.applications.show', $application) }}" data-ajax-success-title="ជោគជ័აჟ™" data-ajax-success-text="បានអនុម័តពាក្យស្នើសុំដោយជោគជ័យ។">
                                                 @csrf
                                                 @method('PATCH')
                                                 <input type="hidden" name="status" value="Approved">
-                                                <input type="hidden" name="admin_notes" value="{{ $application->admin_notes }}">
+                                                <input type="hidden" name="admin_notes" value="{{ $reviewComment }}">
                                                 <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl bg-[#356AE6] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#204ec7]">អនុម័ត</button>
                                             </form>
                                         @endif
                                         @if ($application->status !== 'Rejected')
-                                            <form method="POST" action="{{ route('admin.applications.update', $application) }}" class="flex-1" data-ajax-form data-ajax-redirect="{{ route('admin.applications.show', $application) }}" data-ajax-success-title="áž‡áŸ„áž‚áž‡áŸაჟ™" data-ajax-success-text="បានបដិសេធពាក្យស្នើសុំដោយជោគជ័យ។">
+                                            <form method="POST" action="{{ route('admin.applications.update', $application) }}" class="flex-1" data-ajax-form data-ajax-redirect="{{ route('admin.applications.show', $application) }}" data-ajax-success-title="ជោគជ័აჟ™" data-ajax-success-text="បានបដិសេធពាក្យស្នើសុំដោយជោគជ័យ។">
                                                 @csrf
                                                 @method('PATCH')
                                                 <input type="hidden" name="status" value="Rejected">
-                                                <input type="hidden" name="admin_notes" value="{{ $application->admin_notes }}">
+                                                <input type="hidden" name="admin_notes" value="{{ $reviewComment }}">
                                                 <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-600">បដិសេធ</button>
                                             </form>
                                         @endif
@@ -171,7 +173,7 @@
 
                                 <div class="dashboard-surface p-6">
                                     <h3 class="text-2xl font-semibold tracking-tight text-slate-950">កំណត់ចំណាំពិនិត្យ</h3>
-                                    <form method="POST" action="{{ route('admin.applications.update', $application) }}" class="mt-6 space-y-5" data-ajax-form data-ajax-redirect="{{ route('admin.applications.show', $application) }}" data-ajax-success-title="áž‡áŸ„áž‚აჟ‡áŸაჟ™" data-ajax-success-text="បានរក្សាទុកការពិនិត្យដោយជោគជ័យ។">
+                                    <form method="POST" action="{{ route('admin.applications.update', $application) }}" class="mt-6 space-y-5" data-ajax-form data-ajax-redirect="{{ route('admin.applications.show', $application) }}" data-ajax-success-title="ជោគაჟ‡័აჟ™" data-ajax-success-text="បានរក្សាទុកការពិនិត្យដោយជោគជ័យ។">
                                         @csrf
                                         @method('PATCH')
                                         <div>
@@ -184,10 +186,29 @@
                                         </div>
                                         <div>
                                             <label class="form-label">កំណត់ចំណាំអ្នកគ្រប់គ្រង</label>
-                                            <textarea name="admin_notes" rows="10" class="form-input bg-[#f8fafc]">{{ old('admin_notes', $application->admin_notes) }}</textarea>
+                                            <textarea name="admin_notes" rows="10" class="form-input bg-[#f8fafc]" placeholder="Write a comment for this application...">{{ $reviewComment }}</textarea>
                                         </div>
                                         <button type="submit" class="inline-flex items-center rounded-2xl bg-[#356AE6] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#204ec7]">រក្សាទុកការពិនិត្យ</button>
                                     </form>
+                                </div>
+
+                                <div class="dashboard-surface p-6">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div>
+                                            <h3 class="text-2xl font-semibold tracking-tight text-slate-950">Comment</h3>
+                                            <p class="mt-2 text-sm text-slate-500">Saved reviewer comment for this application.</p>
+                                        </div>
+                                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+                                            {{ $application->status }}
+                                        </span>
+                                    </div>
+
+                                    <div class="dashboard-soft-surface mt-5 px-4 py-4">
+                                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Current Comment</p>
+                                        <p class="mt-3 whitespace-pre-line text-sm leading-7 text-slate-700">
+                                            {{ filled(trim((string) $reviewComment)) ? $reviewComment : 'No comment yet.' }}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -247,6 +268,10 @@
 
     <script>
         (() => {
+            document.querySelectorAll('form[data-ajax-form]').forEach((form) => {
+                form.dataset.disableActionFlow = 'true';
+            });
+
             const modal = document.querySelector('[data-document-preview-modal]');
 
             if (!modal) {

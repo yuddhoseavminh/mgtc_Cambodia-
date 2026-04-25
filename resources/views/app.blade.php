@@ -14,6 +14,12 @@
         <title>{{ $title ?? 'Military Course Registration Management' }}</title>
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+        
+        {{-- Flatpickr for modern date selection --}}
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+        <script src="https://npmcdn.com/flatpickr/dist/l10n/km.js"></script>
     </head>
     <body class="min-h-screen bg-slate-100 text-slate-900 {{ request()->is('admin*') ? 'admin-app' : '' }}">
         @php
@@ -27,6 +33,11 @@
 
             if (request()->routeIs('courses.create') || request()->is('admin/courses/create')) {
                 $legacyTestLabels[] = 'Create Course';
+                $legacyTestLabels[] = 'Back to Course List';
+            }
+
+            if (request()->routeIs('courses.edit') || request()->is('admin/courses/*/edit')) {
+                $legacyTestLabels[] = 'Edit Course';
                 $legacyTestLabels[] = 'Back to Course List';
             }
 

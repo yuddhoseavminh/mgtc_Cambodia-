@@ -31,7 +31,7 @@
         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">ការគ្រប់គ្រងប្រព័ន្ធ</span>
     </div>
 
-    <form method="POST" action="{{ route('admin.profile.update') }}" class="mt-6 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]" data-ajax-form data-ajax-redirect="{{ route('admin.home', ['section' => 'profile']) }}" data-ajax-success-title="áž‡áŸ„áž‚აჟ‡áŸაჟ™" data-ajax-success-text="បានកែប្រែព័ត៌មានគណនីដោយជោគជ័យ។">
+    <form method="POST" action="{{ route('admin.profile.update') }}" class="mt-6 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]" data-ajax-form data-ajax-redirect="{{ route('admin.home', ['section' => 'profile']) }}" data-ajax-success-title="ជោគაჟ‡័აჟ™" data-ajax-success-text="បានកែប្រែព័ត៌មានគណនីដោយជោគជ័យ។">
         @csrf
         @method('PUT')
 

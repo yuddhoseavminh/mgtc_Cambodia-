@@ -3,10 +3,10 @@
 @section('body')
     @php
         $roleLabels = [
-            'Admin' => 'អ្នកគ្រប់គ្រង',
-            'Manager' => 'អ្នកចាត់ការ',
-            'Staff' => 'បុគ្គលិក',
-            'Viewer' => 'អ្នកមើល',
+            // 'Admin' => 'អ្នកគ្រប់គ្រង',
+            // 'Manager' => 'អ្នកចាត់ការ',
+            // 'Staff' => 'បុគ្គលិក',
+            // 'Viewer' => 'អ្នកមើល',
         ];
         $genderLabels = [
             'Male' => 'ប្រុស',
@@ -22,11 +22,12 @@
             'ឋានន្តរស័ក្តិ' => $teamStaff->military_rank,
             'ឈ្មោះជាភាសាខ្មែរ' => $teamStaff->name_kh,
             'ឈ្មោះឡាតាំង' => $teamStaff->name_latin,
-            'លេខសម្គាល់បុគ្គលិក' => $teamStaff->id_number,
+            'អត្តលេខ' => $teamStaff->id_number,
             'ភេទ' => $genderLabels[$teamStaff->gender] ?? $teamStaff->gender,
             'មុខតំណែង' => $teamStaff->position,
             'តួនាទី' => $roleLabels[$teamStaff->role] ?? $teamStaff->role,
             'លេខទូរស័ព្ទ' => $teamStaff->phone_number,
+            'ថ្ងៃចូលបម្រើកងទ័ព' => optional($teamStaff->date_of_enlistment)?->khFormat('d/m/Y'),
             'បង្កើតនៅ' => optional($teamStaff->created_at)?->format('d/m/Y H:i'),
             'កែប្រែចុងក្រោយ' => optional($teamStaff->updated_at)?->format('d/m/Y H:i'),
         ];
@@ -48,6 +49,15 @@
         $missingRequiredCount = max(0, $requiredDocumentCount - $uploadedRequiredCount);
         $previewableExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'];
         $imagePreviewableExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $statusMeta = function (?string $status): array {
+            $value = strtolower(trim((string) $status));
+
+            return match ($value) {
+                'approved' => ['label' => 'អនុម័ត', 'class' => 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200'],
+                'rejected' => ['label' => 'បដិសេធ', 'class' => 'bg-rose-100 text-rose-700 ring-1 ring-rose-200'],
+                default => ['label' => 'រង់ចាំ', 'class' => 'bg-amber-100 text-amber-700 ring-1 ring-amber-200'],
+            };
+        };
     @endphp
 
     <div class="w-full">
@@ -136,7 +146,7 @@
                                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                             <div>
                                                 <h3 class="text-xl font-semibold tracking-tight text-slate-950">ឯកសារដែលត្រូវការ</h3>
-                                                <p class="mt-1 text-sm text-slate-500">គ្រប់គ្រងឯកសារតាមប្រភេទដោយមានទីតាំងថេរ។</p>
+                                                <p class="mt-1 text-sm text-slate-500">គ្រប់គ្រងឯកសារសិក្ខាកាមតាមប្រភេទដោយមានទីតាំងថេរ។</p>
                                             </div>
                                             <a href="{{ route('admin.home', ['section' => 'staff-team-documents']) }}" class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                                                 គ្រប់គ្រងប្រភេទឯកសារ
@@ -176,6 +186,12 @@
                                                                                 $extension = strtolower(pathinfo($document['original_name'] ?? '', PATHINFO_EXTENSION));
                                                                                 $canPreviewInline = in_array($extension, $previewableExtensions, true);
                                                                                 $previewKind = in_array($extension, $imagePreviewableExtensions, true) ? 'image' : ($extension === 'pdf' ? 'pdf' : 'other');
+                                                                                $statusInfo = $statusMeta($document['status'] ?? null);
+                                                                                $statusKey = strtolower((string) ($document['status'] ?? 'pending'));
+                                                                                $isStaffUpload = strtolower((string) ($document['uploaded_by'] ?? '')) === 'staff';
+                                                                                $canReview = $isStaffUpload && $statusKey === 'pending';
+                                                                                $canApprove = $canReview;
+                                                                                $canReject = $canReview;
                                                                             @endphp
                                                                             <div class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-start sm:justify-between">
                                                                                 <div class="min-w-0">
@@ -189,6 +205,9 @@
                                                                                                 {{ \Illuminate\Support\Carbon::parse($document['uploaded_at'])->format('d/m/Y H:i') }}
                                                                                             </span>
                                                                                         @endif
+                                                                                        <span class="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold {{ $statusInfo['class'] }}">
+                                                                                            {{ $statusInfo['label'] }}
+                                                                                        </span>
                                                                                     </div>
                                                                                 </div>
 
@@ -208,6 +227,26 @@
                                                                                     <a href="{{ route('team-staff.documents.download', [$teamStaff, $document['document_index']]) }}" class="inline-flex min-h-[36px] items-center rounded-lg bg-[#356AE6] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#204ec7]">
                                                                                         ទាញយក
                                                                                     </a>
+                                                                                    @if ($canApprove)
+                                                                                        <form method="POST" action="{{ route('team-staff.documents.update-status', [$teamStaff, $document['document_index']]) }}">
+                                                                                            @csrf
+                                                                                            @method('PATCH')
+                                                                                            <input type="hidden" name="status" value="Approved">
+                                                                                            <button type="submit" class="inline-flex min-h-[36px] items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                                                                                                Approve
+                                                                                            </button>
+                                                                                        </form>
+                                                                                    @endif
+                                                                                    @if ($canReject)
+                                                                                        <form method="POST" action="{{ route('team-staff.documents.update-status', [$teamStaff, $document['document_index']]) }}">
+                                                                                            @csrf
+                                                                                            @method('PATCH')
+                                                                                            <input type="hidden" name="status" value="Rejected">
+                                                                                            <button type="submit" class="inline-flex min-h-[36px] items-center rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100">
+                                                                                                Reject
+                                                                                            </button>
+                                                                                        </form>
+                                                                                    @endif
                                                                                     <form method="POST" action="{{ route('team-staff.documents.destroy', [$teamStaff, $document['document_index']]) }}" data-swal-confirm data-swal-title="លុបឯកសារ?" data-swal-text="វានឹងលុបឯកសារនេះចេញពីបញ្ជីតម្រូវការ។">
                                                                                         @csrf
                                                                                         @method('DELETE')
@@ -227,7 +266,7 @@
                                         @else
                                             <div class="mt-6 rounded-[1.45rem] border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
                                                 <p class="text-base font-semibold text-slate-900">មិនទាន់មានតម្រូវការឯកសារនៅឡើយ</p>
-                                                <p class="mt-2 text-sm leading-6 text-slate-500">សូមបង្កើតតម្រូវការឯកសារសម្រាប់បុគ្គលិកក្រុមជាមុនសិន ដើម្បីគ្រប់គ្រងឯកសារនៅទីនេះ។</p>
+                                                <p class="mt-2 text-sm leading-6 text-slate-500">សូមបង្កើតតម្រូវការឯកសារសម្រាប់បុគ្គលិកក្រុមជាមុនសិន ដើម្បីគ្រប់គ្រងឯកសារសិក្ខាកាមនៅទីនេះ។</p>
                                             </div>
                                         @endif
                                     </div>

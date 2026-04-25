@@ -5,10 +5,25 @@
         $badge = $portalContent?->badge ?: 'ប្រព័ន្ធចុះឈ្មោះ';
         $title = $portalContent?->title ?: 'ការចុះឈ្មោះសម្រាប់វគ្គសិក្សា និងបុគ្គលិកសាកល្បង';
         $description = $portalContent?->description ?: 'សូមជ្រើសរើសប្រភេទសេវាដែលអ្នកចង់ចុះឈ្មោះ។ ទិន្នន័យលើទំព័រនេះត្រូវបានគ្រប់គ្រងពីផ្នែករដ្ឋបាល ដើម្បីឲ្យអ្នកប្រើប្រាស់មើលឃើញព័ត៌មានដែលបានធ្វើបច្ចុប្បន្នភាព។';
+        $headerTitle = $portalContent?->staff_title ?: $title;
+        $headerSubtitle = $portalContent?->staff_subtitle ?: $badge;
+        $headerLogo = $portalContent?->staff_logo_path ? route('portal.staff-logo-image') : asset('images/logo_admin.jpg');
     @endphp
 
     <div class="public-page">
         <div class="public-home-shell">
+            <section class="public-banner-card">
+                <div class="flex flex-col items-center gap-4 rounded-[1.45rem] bg-[linear-gradient(135deg,#0f172a,#7f1d1d)] px-4 py-5 text-center text-white sm:flex-row sm:px-6 sm:text-left">
+                    <div class="shrink-0">
+                        <img src="{{ $headerLogo }}" alt="Portal logo" class="h-20 w-20 rounded-full border-4 border-white/20 bg-white object-cover shadow-[0_14px_30px_rgba(0,0,0,0.25)] sm:h-24 sm:w-24">
+                    </div>
+                    <div class="min-w-0">
+                        <h1 class="text-xl font-black leading-tight sm:text-3xl Khmer-OS-Muol-Light">{{ $headerTitle }}</h1>
+                        <p class="mt-2 text-sm font-semibold uppercase tracking-[0.16em] text-white/80 sm:text-base">{{ $headerSubtitle }}</p>
+                    </div>
+                </div>
+            </section>
+
             @if ($portalContent?->banner_image_path)
                 <section class="public-banner-card">
                     <img src="{{ route('portal.banner-image') }}" alt="Portal banner" class="h-auto w-full object-contain">
@@ -49,7 +64,7 @@
                             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"></path>
                         </svg>
                     </span>
-                    <h2 class="public-home-card-title">ចុះឈ្មោះវគ្គសិក្សាសិក្ខាកាម</h2>
+                    <h2 class="public-home-card-title">ពាក្យស្នើសុំចុះឈ្មោះចូលរៀន របស់សិក្ខាកាម</h2>
                     <p class="public-home-card-text">បំពេញទម្រង់សម្រាប់ចុះឈ្មោះវគ្គសិក្សា ដោយប្រើទិន្នន័យ និងឯកសារភ្ជាប់ដែលតម្រូវដោយរដ្ឋបាល។</p>
                     <span class="public-home-card-link">
                         បើកទម្រង់ចុះឈ្មោះ
@@ -67,7 +82,7 @@
                             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
                         </svg>
                     </span>
-                    <h2 class="public-home-card-title">ចុះឈ្មោះបុគ្គលិកសាកល្បង</h2>
+                    <h2 class="public-home-card-title">ពាក្យស្នើសុំចុះឈ្មោះ អនុវត្តការងារសាកល្បង</h2>
                     <p class="public-home-card-text">បំពេញព័ត៌មានបុគ្គលិកសាកល្បង ជាមួយរូបថត អាយុ និងឯកសារដែលបានកំណត់ពីផ្នែករដ្ឋបាល ។</p>
                     <span class="public-home-card-link">
                         បើកទម្រង់បុគ្គលិកសាកល្បង
@@ -87,7 +102,7 @@
                             <path d="M19 9v4"></path>
                         </svg>
                     </span>
-                    <h2 class="public-home-card-title">បុគ្គលិកក្រុមការងារទី៣</h2>
+                    <h2 class="public-home-card-title">ពាក្យស្នើសុំ បំពេញពត៍មានផ្ទាល់ខ្លួនបុគ្គលិក ក្រុមការងារទី៣</h2>
                     <p class="public-home-card-text">សូមអញ្ជើញបុគ្គលិកក្រុមការងារទី៣ ចូលបំពេញព័ត៌មាន និងឯកសារផ្ទាល់ខ្លួន</p>
                     <span class="public-home-card-link !text-rose-700">
                         ចូលប្រព័ន្ធ

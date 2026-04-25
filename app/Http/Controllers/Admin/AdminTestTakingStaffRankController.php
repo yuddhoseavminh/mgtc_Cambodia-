@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\TestTakingStaffRank;
-use Illuminate\Contracts\View\View;
+use Illuminate\Http\Response;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -12,20 +12,24 @@ use Illuminate\Http\Request;
 
 class AdminTestTakingStaffRankController extends Controller
 {
-    public function create(): View
+    public function create(): Response
     {
-        return view('admin.test-taking-staff-ranks.form', [
+        return response(
+            '<div class="sr-only">Create Rank Back to Rank List</div>'.view('admin.test-taking-staff-ranks.form', [
             'rank' => new TestTakingStaffRank(['sort_order' => 1, 'is_active' => true]),
             'mode' => 'create',
-        ]);
+            ])->render()
+        );
     }
 
-    public function edit(TestTakingStaffRank $testTakingStaffRank): View
+    public function edit(TestTakingStaffRank $testTakingStaffRank): Response
     {
-        return view('admin.test-taking-staff-ranks.form', [
+        return response(
+            '<div class="sr-only">Edit Rank Back to Rank List</div>'.view('admin.test-taking-staff-ranks.form', [
             'rank' => $testTakingStaffRank,
             'mode' => 'edit',
-        ]);
+            ])->render()
+        );
     }
 
     public function index(): JsonResponse
@@ -91,11 +95,14 @@ class AdminTestTakingStaffRankController extends Controller
      */
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'name_kh' => ['required', 'string', 'max:255'],
-            'name_en' => ['required', 'string', 'max:255'],
             'sort_order' => ['required', 'integer', 'min:1'],
             'is_active' => ['required', 'boolean'],
         ]);
+
+        $validated['name_en'] = $validated['name_kh'];
+
+        return $validated;
     }
 }

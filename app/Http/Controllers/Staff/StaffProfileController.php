@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Models\PortalContent;
 use App\Models\TeamStaff;
 use App\Models\TeamStaffDocumentRequirement;
+use App\Support\UploadStorage;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -33,6 +34,7 @@ class StaffProfileController extends Controller
             'documents' => $documents,
             'documentRequirements' => $documentRequirements,
             'profileCompletion' => $this->profileCompletion($staff),
+            'portalContent' => PortalContent::query()->first(),
         ]);
     }
 
@@ -43,7 +45,7 @@ class StaffProfileController extends Controller
 
         abort_unless($staff->hasStoredAvatar(), 404);
 
-        return response()->file(Storage::disk('local')->path($staff->avatar_path));
+        return response()->file(UploadStorage::path($staff->avatar_path));
     }
 
     public function storeDocument(Request $request): RedirectResponse
@@ -58,11 +60,29 @@ class StaffProfileController extends Controller
                 Rule::exists('team_staff_document_requirements', 'id')->where('is_active', true),
             ],
             'document_title' => ['nullable', 'string', 'max:255'],
-            'document_file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:10240'],
+            'document_file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:10240'],
+            'document_files' => ['nullable', 'array', 'min:1'],
+            'document_files.*' => ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:10240'],
         ]);
 
-        $documentFile = $validated['document_file'];
-        abort_unless($documentFile instanceof UploadedFile, 422);
+        $documentFiles = collect($request->file('document_files', []))
+            ->flatten()
+            ->filter(fn ($file) => $file instanceof UploadedFile)
+            ->values();
+
+        if ($documentFiles->isEmpty()) {
+            $singleDocumentFile = $validated['document_file'] ?? null;
+            if ($singleDocumentFile instanceof UploadedFile) {
+                $documentFiles = collect([$singleDocumentFile]);
+            }
+        }
+
+        if ($documentFiles->isEmpty()) {
+            throw ValidationException::withMessages([
+                'document_files' => 'Please select at least one document file.',
+            ]);
+        }
+
         $documentRequirement = filled($validated['document_requirement_id'] ?? null)
             ? TeamStaffDocumentRequirement::query()->find($validated['document_requirement_id'])
             : null;
@@ -77,43 +97,53 @@ class StaffProfileController extends Controller
         $documentPrefix = $documentRequirement?->slug ?: Str::slug($documentTitle);
         $documentPrefix = $documentPrefix !== '' ? $documentPrefix : 'document';
 
-        $path = $documentFile->storeAs(
-            'team-staff/'.$staff->id.'/documents',
-            $documentPrefix.'-'.Str::uuid().'.'.$documentFile->getClientOriginalExtension(),
-            'local',
-        );
-
-        $documentPayload = [
-            'label' => $documentRequirement?->name_kh ?? $documentTitle,
-            'path' => $path,
-            'original_name' => $documentFile->getClientOriginalName(),
-            'uploaded_by' => 'staff',
-            'uploaded_at' => now()->toIso8601String(),
-            'status' => 'Pending',
-        ];
-
-        if ($documentRequirement) {
-            $documentPayload['requirement_id'] = $documentRequirement->id;
-            $documentPayload['requirement_slug'] = $documentRequirement->slug;
-        }
-
-        $documents = collect($staff->documents ?? [])
-            ->push($documentPayload)
-            ->values()
-            ->all();
+        $storedPaths = [];
+        $newDocuments = [];
 
         try {
+            foreach ($documentFiles as $documentFile) {
+                $path = UploadStorage::storeAs(
+                    $documentFile,
+                    'team-staff/'.$staff->id.'/documents',
+                    $documentPrefix.'-'.Str::uuid().'.'.$documentFile->getClientOriginalExtension(),
+                );
+                $storedPaths[] = $path;
+
+                $documentPayload = [
+                    'label' => $documentRequirement?->name_kh ?? $documentTitle,
+                    'path' => $path,
+                    'original_name' => $documentFile->getClientOriginalName(),
+                    'uploaded_by' => 'staff',
+                    'uploaded_at' => now()->toIso8601String(),
+                    'status' => 'Pending',
+                ];
+
+                if ($documentRequirement) {
+                    $documentPayload['requirement_id'] = $documentRequirement->id;
+                    $documentPayload['requirement_slug'] = $documentRequirement->slug;
+                }
+
+                $newDocuments[] = $documentPayload;
+            }
+
+            $documents = collect($staff->documents ?? [])
+                ->concat($newDocuments)
+                ->values()
+                ->all();
+
             $staff->update([
                 'documents' => $documents,
             ]);
         } catch (\Throwable $exception) {
-            Storage::disk('local')->delete($path);
+            if ($storedPaths !== []) {
+                UploadStorage::delete($storedPaths);
+            }
 
             throw $exception;
         }
 
         return redirect()->route('staff.profile.show')
-            ->with('status', 'Document uploaded successfully.');
+            ->with('status', count($newDocuments) > 1 ? 'Documents uploaded successfully.' : 'Document uploaded successfully.');
     }
 
     public function downloadDocument(Request $request, int $documentIndex): StreamedResponse
@@ -122,9 +152,9 @@ class StaffProfileController extends Controller
         $staff = $request->user('staff');
         $document = collect($staff->documents ?? [])->values()->get($documentIndex);
 
-        abort_unless($document && ! empty($document['path']) && Storage::disk('local')->exists($document['path']), 404);
+        abort_unless($document && UploadStorage::exists($document['path'] ?? null), 404);
 
-        return Storage::disk('local')->download(
+        return UploadStorage::readDisk($document['path'])->download(
             $document['path'],
             $document['original_name'] ?? basename($document['path']),
         );
@@ -136,9 +166,9 @@ class StaffProfileController extends Controller
         $staff = $request->user('staff');
         $document = collect($staff->documents ?? [])->values()->get($documentIndex);
 
-        abort_unless($document && ! empty($document['path']) && Storage::disk('local')->exists($document['path']), 404);
+        abort_unless($document && UploadStorage::exists($document['path'] ?? null), 404);
 
-        return Storage::disk('local')->response($document['path']);
+        return UploadStorage::readDisk($document['path'])->response($document['path']);
     }
 
     public function destroyDocument(Request $request, int $documentIndex): RedirectResponse
@@ -151,8 +181,14 @@ class StaffProfileController extends Controller
         abort_unless($document, 404);
         abort_unless(($document['uploaded_by'] ?? 'admin') === 'staff', 403);
 
+        $status = strtolower((string) ($document['status'] ?? 'pending'));
+        if ($status === 'approved') {
+            return redirect()->route('staff.profile.show')
+                ->withErrors(['documents' => 'Approved documents cannot be deleted.']);
+        }
+
         if (! empty($document['path'])) {
-            Storage::disk('local')->delete($document['path']);
+            UploadStorage::delete($document['path']);
         }
 
         $staff->update([
@@ -178,6 +214,12 @@ class StaffProfileController extends Controller
             $staff->military_rank,
             $staff->role,
             $staff->phone_number,
+            $staff->dob,
+            $staff->date_of_enlistment,
+            $staff->pob,
+            $staff->training_code,
+            $staff->leader_ref,
+            $staff->origin_ref,
         ];
 
         $completed = collect($fields)->filter(fn ($value) => filled($value))->count();

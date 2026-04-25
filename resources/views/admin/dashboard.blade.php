@@ -50,18 +50,20 @@
         });
         $distributionStyle = $distributionSegments->map(fn ($segment) => "{$segment['color']} {$segment['start']}% {$segment['end']}%")->implode(', ');
         $sectionMeta = [
-            'overview' => ['eyebrow' => 'ទិដ្ឋភាពទូទៅ', 'title' => 'ផ្ទាំងគ្រប់គ្រង'],
-            'reports' => ['eyebrow' => 'វិភាគទិន្នន័យ', 'title' => 'របាយការណ៍'],
+            'overview' => ['eyebrow' => 'System Overview', 'title' => 'Admin Dashboard'],
+            // 'reports' => ['eyebrow' => 'វិភាគទិន្នន័យ', 'title' => 'របាយការណ៍'],
             'applications' => ['eyebrow' => 'ការចុះឈ្មោះវគ្គសិក្សា', 'title' => 'ពាក្យស្នើសុំ'],
+            'registration-form' => ['eyebrow' => 'ការចុះឈ្មោះវគ្គសិក្សា', 'title' => 'សមាជិកចុះឈ្មោះសិក្ខាកាម'],
             'documents' => ['eyebrow' => 'ការចុះឈ្មោះវគ្គសិក្សា', 'title' => 'ឯកសារ'],
             'courses' => ['eyebrow' => 'ការចុះឈ្មោះវគ្គសិក្សា', 'title' => 'វគ្គសិក្សា'],
             'ranks' => ['eyebrow' => 'ការចុះឈ្មោះវគ្គសិក្សា', 'title' => 'ឋានន្តរស័ក្តិ'],
             'levels' => ['eyebrow' => 'ការចុះឈ្មោះវគ្គសិក្សា', 'title' => 'កម្រិតសិក្សា'],
             'design-template' => ['eyebrow' => 'ប្រព័ន្ធ', 'title' => 'រចនាទំព័រដើម'],
+            'staff-team-template' => ['eyebrow' => 'ប្រព័ន្ធ', 'title' => 'គំរូបុគ្គលិកក្រុមការងារទី៣'],
             'course-template' => ['eyebrow' => 'ប្រព័ន្ធ', 'title' => 'គំរូវគ្គសិក្សា'],
             'staff-team' => ['eyebrow' => 'បុគ្គលិកក្រុមការងារទី៣', 'title' => 'បុគ្គលិកក្រុមការងារទី៣'],
             'staff-team-ranks' => ['eyebrow' => 'បុគ្គលិកក្រុមការងារទី៣', 'title' => 'ឋានន្តរស័ក្តិយោធាបុគ្គលិក'],
-            'staff-team-documents' => ['eyebrow' => 'បុគ្គលិកក្រុមការងារទី៣', 'title' => 'ឯកសារបុគ្គលិកក្រុម'],
+            'staff-team-documents' => ['eyebrow' => 'បុគ្គលិកក្រុមការងារទី៣', 'title' => 'ឯកសារបុគ្គលិកក្រុមការងារទី៣'],
             'staff-management' => ['eyebrow' => 'បុគ្គលិកក្រុមការងារទី៣', 'title' => 'គ្រប់គ្រងបុគ្គលិកក្រុមការងារទី៣'],
             'test-taking-staff' => ['eyebrow' => 'បុគ្គលិកសាកល្បង', 'title' => 'បុគ្គលិកសាកល្បង'],
             'test-taking-staff-template' => ['eyebrow' => 'ប្រព័ន្ធ', 'title' => 'គំរូបុគ្គលិកសាកល្បង'],
@@ -97,6 +99,10 @@
                             @include('admin.sections.applications')
                         @endif
 
+                        @if ($section === 'registration-form')
+                            @include('admin.sections.registration-form')
+                        @endif
+
                         @if ($section === 'reports')
                             @include('admin.sections.reports')
                         @endif
@@ -107,6 +113,10 @@
 
                         @if ($section === 'design-template')
                             @include('admin.sections.design-template')
+                        @endif
+
+                        @if ($section === 'staff-team-template')
+                            @include('admin.sections.staff-team-template')
                         @endif
 
                         @if ($section === 'course-template')

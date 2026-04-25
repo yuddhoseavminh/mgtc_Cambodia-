@@ -32,11 +32,13 @@ class AdminPageController extends Controller
             'overview',
             'reports',
             'applications',
+            'registration-form',
             'courses',
             'ranks',
             'levels',
             'documents',
             'design-template',
+            'staff-team-template',
             'course-template',
             'staff-team',
             'staff-team-ranks',
@@ -180,6 +182,7 @@ class AdminPageController extends Controller
                     $innerQuery
                         ->where('name_kh', 'like', "%{$registerStaffSearch}%")
                         ->orWhere('name_latin', 'like', "%{$registerStaffSearch}%")
+                        ->orWhere('id_number', 'like', "%{$registerStaffSearch}%")
                         ->orWhere('phone_number', 'like', "%{$registerStaffSearch}%");
                 });
             })
@@ -190,6 +193,15 @@ class AdminPageController extends Controller
             ->latest('created_at');
         $testTakingStaffRegistrations = (clone $testTakingStaffRegistrationsQuery)
             ->paginate(10, ['*'], 'register_staff_page')
+            ->withQueryString();
+        $testTakingStaffPreview = TestTakingStaffRegistration::query()
+            ->with([
+                'rank:id,name_kh,name_en',
+                'documents:id,test_taking_staff_registration_id,test_taking_staff_document_requirement_id',
+            ])
+            ->latest('submitted_at')
+            ->latest('created_at')
+            ->paginate(6, ['*'], 'test_taking_staff_page')
             ->withQueryString();
         $teamStaffQuery = TeamStaff::query()
             ->when($staffSearch !== '', function (Builder $query) use ($staffSearch) {
@@ -253,6 +265,9 @@ class AdminPageController extends Controller
                 'totalTestTakingStaffRanks' => TestTakingStaffRank::count(),
                 'totalTestTakingStaffDocuments' => TestTakingStaffDocumentRequirement::count(),
                 'totalTestTakingStaffRegistrations' => TestTakingStaffRegistration::count(),
+                'currentMonthTestTakingStaffRegistrations' => TestTakingStaffRegistration::query()
+                    ->whereBetween('submitted_at', [$currentMonthStart, now()])
+                    ->count(),
                 'totalTeamStaffDocuments' => TeamStaffDocumentRequirement::count(),
             ],
             'applicationsPerMonth' => $applicationsPerMonth,
@@ -269,7 +284,7 @@ class AdminPageController extends Controller
             'ranks' => Rank::query()->ordered()->get(),
             'culturalLevels' => CulturalLevel::query()->ordered()->get(),
             'documentRequirements' => DocumentRequirement::query()->ordered()->get(),
-            'portalContent' => PortalContent::query()->firstOrFail(),
+            'portalContent' => PortalContent::firstOrCreateDefault(),
             'testTakingStaffRanks' => TestTakingStaffRank::query()->ordered()->get(),
             'testTakingStaffDocumentRequirements' => TestTakingStaffDocumentRequirement::query()->ordered()->get(),
             'statuses' => config('military-registration.application_statuses'),
@@ -277,6 +292,7 @@ class AdminPageController extends Controller
             'adminUsers' => $adminUsers,
             'registerStaffUsers' => $registerStaffUsers,
             'testTakingStaffRegistrations' => $testTakingStaffRegistrations,
+            'testTakingStaffPreview' => $testTakingStaffPreview,
             'registerStaffFilters' => [
                 'search' => $registerStaffSearch,
                 'rank' => $registerStaffRankFilter,
@@ -303,7 +319,6 @@ class AdminPageController extends Controller
                 ->distinct()
                 ->orderBy('role')
                 ->pluck('role')
-                ->merge(['Admin', 'Manager', 'Staff', 'Viewer'])
                 ->filter()
                 ->unique()
                 ->values(),

@@ -5,13 +5,75 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\ApplicationDocument;
+use App\Models\DocumentRequirement;
+use App\Support\UploadStorage;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminDocumentController extends Controller
 {
+    public function store(Request $request, Application $application): RedirectResponse
+    {
+        $validated = $request->validate([
+            'document_requirement_id' => ['required', 'exists:document_requirements,id'],
+            'document_file' => ['required', 'file', 'max:51200', 'mimes:pdf,jpg,jpeg,png,doc,docx,webp'],
+        ]);
+
+        $requirement = DocumentRequirement::query()->findOrFail($validated['document_requirement_id']);
+        $file = $request->file('document_file');
+
+        $application->applicationDocuments()->create([
+            'document_requirement_id' => $requirement->id,
+            'status' => ApplicationDocument::STATUS_HAVE,
+            'file_path' => UploadStorage::store($file, 'applications/documents'),
+            'original_name' => $file->getClientOriginalName(),
+        ]);
+
+        return back()->with('status', 'បានបន្ថែមឯកសារដោយជោគជ័យ។');
+    }
+
+    public function update(
+        Request $request,
+        Application $application,
+        ApplicationDocument $applicationDocument,
+    ): RedirectResponse {
+        abort_unless($applicationDocument->application_id === $application->id, 404);
+
+        $request->validate([
+            'document_file' => ['required', 'file', 'max:51200', 'mimes:pdf,jpg,jpeg,png,doc,docx,webp'],
+        ]);
+
+        if ($applicationDocument->file_path) {
+            UploadStorage::delete($applicationDocument->file_path);
+        }
+
+        $file = $request->file('document_file');
+
+        $applicationDocument->update([
+            'status' => ApplicationDocument::STATUS_HAVE,
+            'file_path' => UploadStorage::store($file, 'applications/documents'),
+            'original_name' => $file->getClientOriginalName(),
+        ]);
+
+        return back()->with('status', 'បានជំនួសឯកសារដោយជោគជ័យ។');
+    }
+
+    public function destroy(Application $application, ApplicationDocument $applicationDocument): RedirectResponse
+    {
+        abort_unless($applicationDocument->application_id === $application->id, 404);
+
+        if ($applicationDocument->file_path) {
+            UploadStorage::delete($applicationDocument->file_path);
+        }
+
+        $applicationDocument->delete();
+
+        return back()->with('status', 'បានលុបឯកសារដោយជោគជ័យ។');
+    }
+
     public function show(Application $application, int $applicationDocument): StreamedResponse|View
     {
         $applicationDocumentId = $applicationDocument;
@@ -29,7 +91,8 @@ class AdminDocumentController extends Controller
             return $this->missingDocumentView($application, $applicationDocument, 'preview');
         }
 
-        return Storage::disk('local')->response($applicationDocument->file_path, $applicationDocument->original_name);
+        return UploadStorage::readDisk($applicationDocument->file_path)
+            ->response($applicationDocument->file_path, $applicationDocument->original_name);
     }
 
     public function download(Application $application, int $applicationDocument): StreamedResponse|View
@@ -49,7 +112,8 @@ class AdminDocumentController extends Controller
             return $this->missingDocumentView($application, $applicationDocument, 'download');
         }
 
-        return Storage::disk('local')->download($applicationDocument->file_path, $applicationDocument->original_name);
+        return UploadStorage::readDisk($applicationDocument->file_path)
+            ->download($applicationDocument->file_path, $applicationDocument->original_name);
     }
 
     private function missingDocumentView(
@@ -67,7 +131,7 @@ class AdminDocumentController extends Controller
     private function documentIsAvailable(ApplicationDocument $applicationDocument): bool
     {
         return filled($applicationDocument->file_path)
-            && Storage::disk('local')->exists($applicationDocument->file_path);
+            && UploadStorage::exists($applicationDocument->file_path);
     }
 
     private function resolveApplicationDocument(

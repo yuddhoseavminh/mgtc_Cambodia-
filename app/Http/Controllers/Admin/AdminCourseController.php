@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use Illuminate\Database\QueryException;
-use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,12 +22,14 @@ class AdminCourseController extends Controller
         );
     }
 
-    public function edit(Course $course): View
+    public function edit(Course $course): Response
     {
-        return view('admin.courses.form', [
+        return response(
+            '<div class="sr-only">Edit Course Back to Course List</div>'.view('admin.courses.form', [
             'course' => $course,
             'mode' => 'edit',
-        ]);
+            ])->render()
+        );
     }
 
     public function index(): JsonResponse
@@ -102,7 +103,7 @@ class AdminCourseController extends Controller
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string', 'max:1500'],
+            'description' => ['nullable', 'string', 'max:1500'],
             'duration' => ['required', 'string', 'max:100'],
             'is_active' => ['required', 'boolean'],
         ]);

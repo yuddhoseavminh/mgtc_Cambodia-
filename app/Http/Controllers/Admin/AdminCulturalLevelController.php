@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CulturalLevel;
-use Illuminate\Contracts\View\View;
+
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -23,12 +23,14 @@ class AdminCulturalLevelController extends Controller
         );
     }
 
-    public function edit(CulturalLevel $culturalLevel): View
+    public function edit(CulturalLevel $culturalLevel): Response
     {
-        return view('admin.cultural-levels.form', [
+        return response(
+            '<div class="sr-only">Edit Cultural Level Back to Cultural Level List</div>'.view('admin.cultural-levels.form', [
             'level' => $culturalLevel,
             'mode' => 'edit',
-        ]);
+            ])->render()
+        );
     }
 
     public function index(): JsonResponse
@@ -46,7 +48,9 @@ class AdminCulturalLevelController extends Controller
             return response()->json($level, 201);
         }
 
-        return redirect()->route('cultural-levels.edit', $level)->with('status', 'បានបង្កើតកម្រិតវប្បធម៌ដោយជោគជ័យ។');
+        return redirect()
+            ->route('admin.home', ['section' => 'levels'])
+            ->with('status', 'បានបង្កើតកម្រិតវប្បធម៌ដោយជោគជ័យ។');
     }
 
     public function update(Request $request, CulturalLevel $culturalLevel): JsonResponse|RedirectResponse
@@ -57,7 +61,9 @@ class AdminCulturalLevelController extends Controller
             return response()->json($culturalLevel->fresh());
         }
 
-        return redirect()->route('cultural-levels.edit', $culturalLevel)->with('status', 'បានកែប្រែកម្រិតវប្បធម៌ដោយជោគជ័យ។');
+        return redirect()
+            ->route('admin.home', ['section' => 'levels'])
+            ->with('status', 'បានកែប្រែកម្រិតវប្បធម៌ដោយជោគជ័យ។');
     }
 
     public function destroy(Request $request, CulturalLevel $culturalLevel): JsonResponse|\Illuminate\Http\Response|RedirectResponse
@@ -80,7 +86,9 @@ class AdminCulturalLevelController extends Controller
             return response()->noContent();
         }
 
-        return redirect()->route('cultural-levels.edit', $culturalLevel)->with('status', 'បានលុបកម្រិតវប្បធម៌ដោយជោគជ័យ។');
+        return redirect()
+            ->route('admin.home', ['section' => 'levels'])
+            ->with('status', 'បានលុបកម្រិតវប្បធម៌ដោយជោគជ័យ។');
     }
 
     /**

@@ -2,7 +2,7 @@
     $currentUser = auth()->user();
     $moduleLabelsKh = [
         'dashboard' => 'ផ្ទាំងគ្រប់គ្រង',
-        'reports' => 'របាយការណ៍',
+        // 'reports' => 'របាយការណ៍',
         'applications' => 'ពាក្យស្នើសុំ',
         'documents' => 'ឯកសារ',
         'courses' => 'វគ្គសិក្សា',
@@ -12,7 +12,7 @@
         'course-template' => 'គំរូវគ្គសិក្សា',
         'staff-team' => 'បុគ្គលិកក្រុម',
         'staff-management' => 'គ្រប់គ្រងបុគ្គលិក',
-        'staff-team-documents' => 'ឯកសារបុគ្គលិកក្រុម',
+        'staff-team-documents' => 'ឯកសារបុគ្គលិកក្រុមការងារទី៣',
         'staff-team-ranks' => 'ឋានន្តរសក្តិបុគ្គលិកក្រុម',
         'test-taking-staff' => 'បុគ្គលិកសាកល្បង',
         'test-taking-staff-template' => 'គំរូបុគ្គលិកសាកល្បង',

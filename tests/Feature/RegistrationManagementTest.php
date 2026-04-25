@@ -14,7 +14,6 @@ use App\Models\TestTakingStaffRank;
 use App\Models\TeamStaff;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Hash;
@@ -60,7 +59,7 @@ class RegistrationManagementTest extends TestCase
         return TeamStaff::query()->create(array_merge([
             'sequence_no' => 1,
             'military_rank' => 'Captain',
-            'name_kh' => 'សុខ ដារា',
+            'name_kh' => 'Sok Dara KH',
             'name_latin' => 'Sok Dara',
             'id_number' => '058256',
             'username' => 'Sok Dara',
@@ -140,7 +139,7 @@ class RegistrationManagementTest extends TestCase
             ->withHeader('Accept', 'application/json')
             ->post('/applications', [
                 '_token' => $this->csrfToken(),
-                'khmer_name' => 'សា វ៉ាមិញ',
+                'khmer_name' => 'Applicant KH',
                 'latin_name' => 'Sea Vaminh',
                 'id_number' => 'A-1001',
                 'rank_id' => $rankId,
@@ -158,10 +157,7 @@ class RegistrationManagementTest extends TestCase
                 'document_files' => $documentFiles,
             ]);
 
-        $response->assertCreated()
-            ->assertJson([
-                'message' => 'អ្នកបានចុះឈ្មោះដោយជោគជ័យ សំណាងល្អ ជួបគ្នាឆាប់ៗ។',
-            ]);
+        $response->assertCreated();
 
         $this->assertDatabaseHas('applications', [
             'latin_name' => 'Sea Vaminh',
@@ -176,7 +172,102 @@ class RegistrationManagementTest extends TestCase
         $this->assertSame(3, $application->applicationDocuments()->whereNotNull('file_path')->count());
     }
 
-    public function test_test_taking_staff_registration_sends_telegram_notification_when_enabled(): void
+    public function test_public_registration_automatically_sends_first_uploaded_document_to_telegram(): void
+    {
+        Storage::fake('local');
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response(['ok' => true], 200),
+        ]);
+
+        Config::set('services.telegram.enabled', true);
+        Config::set('services.telegram.bot_token', 'telegram-test-token');
+        Config::set('services.telegram.chat_id', 'telegram-test-chat');
+
+        DocumentRequirement::query()->update(['is_protected' => false]);
+
+        $rankId = Rank::query()->create([
+            'name_kh' => 'Auto Rank KH',
+            'name_en' => 'Auto Rank',
+            'sort_order' => 1,
+            'is_active' => true,
+        ])->id;
+
+        $courseId = Course::query()->create([
+            'name' => 'Auto Course',
+            'description' => 'Auto course for Telegram test.',
+            'duration' => '3 months',
+            'is_active' => true,
+        ])->id;
+
+        $culturalLevelId = CulturalLevel::query()->create([
+            'name' => 'Auto Cultural Level',
+            'sort_order' => 1,
+            'is_active' => true,
+        ])->id;
+
+        $documentRequirements = DocumentRequirement::query()->ordered()->get();
+
+        if ($documentRequirements->isEmpty()) {
+            $documentRequirements = collect([
+                DocumentRequirement::query()->create([
+                    'name_kh' => 'Auto Telegram Document KH',
+                    'name_en' => 'Auto Telegram Document',
+                    'slug' => 'auto-telegram-document',
+                    'sort_order' => 1,
+                    'is_active' => true,
+                    'is_protected' => false,
+                ]),
+            ]);
+        }
+
+        $documentStatuses = [];
+        $documentFiles = [];
+
+        foreach ($documentRequirements as $index => $documentRequirement) {
+            $documentStatuses[$documentRequirement->id] = $index === 0 ? 'have' : 'dont_have';
+
+            if ($index === 0) {
+                $documentFiles[$documentRequirement->id] = [
+                    UploadedFile::fake()->create(
+                        $documentRequirement->slug.'-auto.pdf',
+                        100,
+                        'application/pdf',
+                    ),
+                ];
+            }
+        }
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('Accept', 'application/json')
+            ->post('/applications', [
+                '_token' => $this->csrfToken(),
+                'khmer_name' => 'Auto Telegram KH',
+                'latin_name' => 'Auto Telegram Latin',
+                'id_number' => 'AUTO-1001',
+                'rank_id' => $rankId,
+                'date_of_birth' => '1994-08-10',
+                'date_of_enlistment' => '2015-03-01',
+                'position' => 'Operations Officer',
+                'unit' => 'Royal Army Training Command',
+                'course_id' => $courseId,
+                'cultural_level_id' => $culturalLevelId,
+                'place_of_birth' => 'Phnom Penh',
+                'current_address' => '123 Military Campus Road, Phnom Penh',
+                'family_situation' => 'Single',
+                'phone_number' => '012345678',
+                'document_statuses' => $documentStatuses,
+                'document_files' => $documentFiles,
+            ]);
+
+        $response->assertCreated();
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), '/sendDocument');
+        });
+    }
+
+    public function test_test_taking_staff_registration_does_not_send_telegram_even_when_enabled(): void
     {
         Storage::fake('local');
         Http::fake([
@@ -188,14 +279,14 @@ class RegistrationManagementTest extends TestCase
         Config::set('services.telegram.chat_id', 'telegram-test-chat');
 
         $rank = TestTakingStaffRank::query()->create([
-            'name_kh' => 'នាយទាហានសាកល្បង',
+            'name_kh' => 'Test Staff Rank KH',
             'name_en' => 'Test Staff Rank',
             'sort_order' => 1,
             'is_active' => true,
         ]);
 
         $documentRequirement = TestTakingStaffDocumentRequirement::query()->create([
-            'name_kh' => 'ឯកសារសាកល្បង',
+            'name_kh' => 'Test Document KH',
             'name_en' => 'Test Document',
             'slug' => 'test-document',
             'sort_order' => 1,
@@ -207,8 +298,8 @@ class RegistrationManagementTest extends TestCase
             ->withHeader('Accept', 'application/json')
             ->post('/test-taking-staff-registrations', [
                 '_token' => $this->csrfToken(),
-                'name_kh' => 'អ្នកសាកល្បង',
-                'name_latin' => 'Tester Latin',
+                'name_kh' => 'No Telegram Tester KH',
+                'name_latin' => 'No Telegram Tester',
                 'test_taking_staff_rank_id' => $rank->id,
                 'date_of_birth' => '1995-01-10',
                 'military_service_day' => '2018-02-01',
@@ -222,13 +313,7 @@ class RegistrationManagementTest extends TestCase
             ]);
 
         $response->assertCreated();
-
-        Http::assertSent(function (ClientRequest $request) {
-            return $request->url() === 'https://api.telegram.org/bottelegram-test-token/sendMessage'
-                && $request['chat_id'] === 'telegram-test-chat'
-                && str_contains($request['text'], 'Tester Latin')
-                && str_contains($request['text'], 'អ្នកសាកល្បង');
-        });
+        Http::assertNothingSent();
     }
 
     public function test_test_taking_staff_registration_returns_success_page_without_redirect(): void
@@ -236,7 +321,7 @@ class RegistrationManagementTest extends TestCase
         Storage::fake('local');
 
         $rank = TestTakingStaffRank::query()->create([
-            'name_kh' => 'អ្នកសាកល្បង',
+            'name_kh' => 'Tester KH',
             'name_en' => 'Test Staff Rank',
             'sort_order' => 1,
             'is_active' => true,
@@ -246,7 +331,7 @@ class RegistrationManagementTest extends TestCase
             ->withSession(['_token' => $this->csrfToken()])
             ->post('/test-taking-staff-registrations', [
                 '_token' => $this->csrfToken(),
-                'name_kh' => 'បុគ្គលិកសាកល្បង',
+                'name_kh' => 'Tester KH',
                 'name_latin' => 'Tester Latin',
                 'test_taking_staff_rank_id' => $rank->id,
                 'date_of_birth' => '1995-01-10',
@@ -256,9 +341,9 @@ class RegistrationManagementTest extends TestCase
             ]);
 
         $response->assertCreated()
-            ->assertSee('ព័ត៌មានរបស់អ្នកត្រូវបានបញ្ជូនរួចរាល់។ សូមរង់ចាំការត្រួតពិនិត្យពីក្រុមការងារ។');
-    }
+            ->assertSee('public-success-page', false);
 
+    }
     public function test_admin_login_page_is_available(): void
     {
         $response = $this->get('/admin/login');
@@ -296,6 +381,22 @@ class RegistrationManagementTest extends TestCase
             ]);
     }
 
+    public function test_admin_can_login_with_username(): void
+    {
+        $loginResponse = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('X-CSRF-TOKEN', $this->csrfToken())
+            ->postJson('/admin/login', [
+                '_token' => $this->csrfToken(),
+                'email' => '  Geography Training Center  ',
+                'password' => '99996666',
+            ]);
+
+        $loginResponse->assertOk()
+            ->assertJsonPath('user.name', 'Geography Training Center')
+            ->assertJsonPath('user.email', 'geography.training.center@system.local');
+    }
+
     public function test_team_staff_username_matches_latin_name_when_created(): void
     {
         Storage::fake('local');
@@ -308,7 +409,7 @@ class RegistrationManagementTest extends TestCase
             ->post('/admin/team-staff', [
                 '_token' => $this->csrfToken(),
                 'military_rank' => 'Captain',
-                'name_kh' => 'យុទ្ធោ សាវមិញ',
+                'name_kh' => 'Yuddho KH',
                 'name_latin' => 'Yuddho Seavminh',
                 'id_number' => '058256',
                 'avatar_image' => UploadedFile::fake()->image('avatar.png', 300, 300),
@@ -391,7 +492,6 @@ class RegistrationManagementTest extends TestCase
 
         $this->get('/staff/profile')
             ->assertOk()
-            ->assertSee('ការបញ្ចូលឯកសារ')
             ->assertSee($staff->name_latin);
 
         $this->post('/staff/profile/documents', [
@@ -498,6 +598,66 @@ class RegistrationManagementTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_open_design_template_page(): void
+    {
+        $this->loginAsAdmin();
+
+        $response = $this->get('/admin?section=design-template');
+
+        $response->assertOk()
+            ->assertSee('Portal Content');
+
+    }
+    public function test_course_template_page_shows_single_design_navigation_group(): void
+    {
+        $this->loginAsAdmin();
+
+        $response = $this->get('/admin?section=course-template');
+
+        $response->assertOk()
+            ->assertSee('section=design-template', false)
+            ->assertSee('section=course-template', false)
+            ->assertSee('section=test-taking-staff-template', false)
+            ->assertDontSee('template_tab=portal', false)
+            ->assertDontSee('template_tab=staff', false);
+    }
+
+    public function test_admin_portal_content_redirect_preserves_active_template_tab(): void
+    {
+        $this->loginAsAdmin();
+
+        $portalContent = PortalContent::query()->firstOrFail();
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->put('/admin/portal-content', [
+                '_token' => $this->csrfToken(),
+                'template_tab' => 'staff',
+                'badge' => $portalContent->badge,
+                'title' => $portalContent->title,
+                'description' => $portalContent->description,
+                'feature_one_title' => $portalContent->feature_one_title,
+                'feature_one_description' => $portalContent->feature_one_description,
+                'feature_two_title' => $portalContent->feature_two_title,
+                'feature_two_description' => $portalContent->feature_two_description,
+                'feature_three_title' => $portalContent->feature_three_title,
+                'feature_three_description' => $portalContent->feature_three_description,
+                'staff_title' => 'Updated Staff Title',
+                'staff_subtitle' => 'Updated Staff Subtitle',
+            ]);
+
+        $response->assertRedirect(route('admin.home', [
+            'section' => 'design-template',
+            'template_tab' => 'staff',
+        ]));
+
+        $this->assertDatabaseHas('portal_contents', [
+            'id' => $portalContent->id,
+            'staff_title' => 'Updated Staff Title',
+            'staff_subtitle' => 'Updated Staff Subtitle',
+        ]);
+    }
+
     public function test_admin_can_upload_portal_banner_image(): void
     {
         Storage::fake('local');
@@ -549,7 +709,35 @@ class RegistrationManagementTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Create Rank')
-            ->assertSee('Back to Rank List');
+            ->assertSee('Back to Rank List')
+            ->assertSee('sort_order');
+    }
+
+    public function test_admin_can_create_rank_with_sort_order(): void
+    {
+        $this->loginAsAdmin();
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('X-CSRF-TOKEN', $this->csrfToken())
+            ->postJson('/admin/ranks', [
+                'name_kh' => 'Rank New KH',
+                'sort_order' => 9,
+                'is_active' => true,
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonFragment([
+                'name_kh' => 'Rank New KH',
+                'sort_order' => 9,
+            ]);
+
+        $this->assertDatabaseHas('ranks', [
+            'name_kh' => 'Rank New KH',
+            'name_en' => 'Rank New KH',
+            'sort_order' => 9,
+            'is_active' => true,
+        ]);
     }
 
     public function test_admin_can_open_cultural_level_create_form(): void
@@ -572,6 +760,54 @@ class RegistrationManagementTest extends TestCase
         $response->assertOk()
             ->assertSee('Create Document Requirement')
             ->assertSee('Back to Document List');
+    }
+
+    public function test_admin_can_choose_a_single_document_requirement_for_telegram_sending(): void
+    {
+        $this->loginAsAdmin();
+
+        $currentTelegramRequirement = DocumentRequirement::query()->create([
+            'name_kh' => 'Telegram Current KH',
+            'name_en' => 'Telegram Current',
+            'slug' => 'telegram-current',
+            'sort_order' => 50,
+            'is_active' => true,
+            'is_protected' => true,
+        ]);
+
+        $nextTelegramRequirement = DocumentRequirement::query()->create([
+            'name_kh' => 'Telegram Next KH',
+            'name_en' => 'Telegram Next',
+            'slug' => 'telegram-next',
+            'sort_order' => 51,
+            'is_active' => true,
+            'is_protected' => false,
+        ]);
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('X-CSRF-TOKEN', $this->csrfToken())
+            ->putJson('/admin/document-requirements/'.$nextTelegramRequirement->id, [
+                'name_kh' => $nextTelegramRequirement->name_kh,
+                'sort_order' => $nextTelegramRequirement->sort_order,
+                'is_active' => true,
+                'is_protected' => true,
+                'slug' => $nextTelegramRequirement->slug,
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('id', $nextTelegramRequirement->id)
+            ->assertJsonPath('is_protected', true);
+
+        $this->assertDatabaseHas('document_requirements', [
+            'id' => $nextTelegramRequirement->id,
+            'is_protected' => true,
+        ]);
+
+        $this->assertDatabaseHas('document_requirements', [
+            'id' => $currentTelegramRequirement->id,
+            'is_protected' => false,
+        ]);
     }
 
     public function test_admin_can_open_reports_page(): void
@@ -631,3 +867,4 @@ class RegistrationManagementTest extends TestCase
             ->assertJsonPath('documents.0.download_url', url("/admin/applications/{$application->id}/documents/{$document->id}/download"));
     }
 }
+

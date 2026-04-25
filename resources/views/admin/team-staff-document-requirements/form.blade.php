@@ -1,101 +1,92 @@
-@extends('app')
-
-@section('body')
-    @php
-        $isEdit = $mode === 'edit';
-    @endphp
-
-    <div class="w-full">
-        <div class="dashboard-shell">
-            <div class="grid min-h-[calc(100vh-3.5rem)] lg:grid-cols-[312px_minmax(0,1fr)]">
-                @include('admin.partials.sidebar', ['section' => 'staff-team-documents'])
-
-                <main class="flex min-h-full flex-col bg-[#f5f7fb]">
-                    @include('admin.partials.topbar', [
-                        'title' => $isEdit ? 'កែប្រែឯកសារបុគ្គលិកក្រុម' : 'បង្កើតឯកសារបុគ្គលិកក្រុម',
-                        'subtitle' => 'កាតាឡុកក្រុម',
-                        'filters' => ['search' => ''],
-                        'pendingNotifications' => 0,
-                        'currentSection' => 'staff-team-documents',
-                    ])
-
-                    <div class="flex-1 p-4 sm:p-6">
-                        <section class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                                <h3 class="text-[1.9rem] font-semibold tracking-tight text-slate-950">{{ $isEdit ? 'កែប្រែឯកសារបុគ្គលិកក្រុម' : 'បង្កើតឯកសារបុគ្គលិកក្រុម' }}</h3>
-                                <p class="mt-2 text-sm text-slate-500">
-                                    {{ $isEdit ? 'ធ្វើបច្ចុប្បន្នភាពឈ្មោះ ស្លាកតំណ និងលំដាប់សម្រាប់ប្រភេទឯកសារបុគ្គលិកក្រុម។' : 'បន្ថែមប្រភេទឯកសារថ្មី សម្រាប់ប្រើនៅក្នុងទម្រង់បុគ្គលិកក្រុម។' }}
-                                </p>
-                            </div>
-
-                            <a href="{{ route('admin.home', ['section' => 'staff-team-documents']) }}" class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                                ត្រឡប់ទៅបញ្ជីឯកសារ
-                            </a>
-                        </section>
-
-                        <section class="dashboard-surface mt-6 p-6">
-                            <form
-                                method="POST"
-                                action="{{ $isEdit ? route('team-staff-document-requirements.update', $documentRequirement) : route('team-staff-document-requirements.store') }}"
-                                class="grid gap-5 md:grid-cols-2"
-                                data-ajax-form
-                                data-ajax-redirect="{{ route('admin.home', ['section' => 'staff-team-documents']) }}"
-                                data-ajax-success-title="ជោគជ័យ"
-                                data-ajax-success-text="{{ $isEdit ? 'បានកែប្រែប្រភេទឯកសារដោយជោគជ័យ។' : 'បានបង្កើតប្រភេទឯកសារដោយជោគជ័យ។' }}"
-                            >
-                                @csrf
-                                @if ($isEdit)
-                                    @method('PUT')
-                                @endif
-
-                                <div class="md:col-span-2">
-                                    <label class="form-label">ឈ្មោះជាភាសាខ្មែរ</label>
-                                    <input type="text" name="name_kh" value="{{ old('name_kh', $documentRequirement->name_kh) }}" class="form-input bg-[#f8fafc]" placeholder="បញ្ចូលឈ្មោះឯកសារ">
-                                    @include('partials.field-error', ['name' => 'name_kh'])
-                                </div>
-
-                                <div>
-                                    <label class="form-label">ស្លាកតំណ</label>
-                                    <input type="text" name="slug" value="{{ old('slug', $documentRequirement->slug) }}" class="form-input bg-[#f8fafc]" placeholder="ស្លាកតំណផ្ទាល់ខ្លួន (ស្រេចចិត្ត)">
-                                    @include('partials.field-error', ['name' => 'slug'])
-                                </div>
-
-                                <div>
-                                    <label class="form-label">លំដាប់</label>
-                                    <input type="number" name="sort_order" min="1" value="{{ old('sort_order', $documentRequirement->sort_order) }}" class="form-input bg-[#f8fafc]">
-                                    @include('partials.field-error', ['name' => 'sort_order'])
-                                </div>
-
-                                <div>
-                                    <label class="form-label">ស្ថានភាព</label>
-                                    <select name="is_active" class="form-input bg-[#f8fafc]">
-                                        <option value="1" @selected((string) old('is_active', (int) $documentRequirement->is_active) === '1')>សកម្ម</option>
-                                        <option value="0" @selected((string) old('is_active', (int) $documentRequirement->is_active) === '0')>មិនសកម្ម</option>
-                                    </select>
-                                    @include('partials.field-error', ['name' => 'is_active'])
-                                </div>
-
-                                <div class="md:col-span-2 flex flex-wrap gap-3">
-                                    <button type="submit" class="inline-flex items-center justify-center rounded-2xl bg-[#356AE6] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#204ec7]">
-                                        {{ $isEdit ? 'រក្សាទុកការកែប្រែ' : 'បង្កើតប្រភេទឯកសារ' }}
-                                    </button>
-                                    <a href="{{ route('admin.home', ['section' => 'staff-team-documents']) }}" class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                                        បោះបង់
-                                    </a>
-                                </div>
-                            </form>
-                        </section>
-                    </div>
-
-                    <footer class="admin-footer-band flex flex-col gap-3 px-4 py-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                        <p>&copy; {{ now()->year }} ប្រព័ន្ធការចុះឈ្មោះសិក្ខាកាមវគ្គសិក្សាយោធា</p>
-                        <div class="flex items-center gap-3">
-                            <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">API ដំណើរការ</span>
-                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">V1.0</span>
-                        </div>
-                    </footer>
-                </main>
-            </div>
-        </div>
+<div class="flex items-center justify-between border-b border-slate-100 pb-4">
+    <div>
+        <h3 class="text-xl font-semibold tracking-tight text-slate-900">
+            {{ $mode === 'edit' ? 'កែប្រែឯកសារបុគ្គលិកក្រុមការងារទី៣' : 'បង្កើតឯកសារបុគ្គលិកក្រុមការងារទី៣' }}
+        </h3>
+        <p class="mt-1 text-sm text-slate-500">
+            {{ $mode === 'edit' ? 'ធ្វើបច្ចុប្បន្នភាពឈ្មោះ ស្លាកតំណ និងលំដាប់សម្រាប់ប្រភេទឯកសារបុគ្គលិកក្រុមការងារទី៣។' : 'បន្ថែមប្រភេទឯកសារថ្មី សម្រាប់ប្រើនៅក្នុងទម្រង់បុគ្គលិកក្រុម។' }}
+        </p>
     </div>
-@endsection
+    <button type="button" data-staff-doc-modal-close
+        class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+    </button>
+</div>
+
+<form
+    method="POST"
+    action="{{ $mode === 'edit' ? route('team-staff-document-requirements.update', $documentRequirement) : route('team-staff-document-requirements.store') }}"
+    class="mt-6 space-y-5"
+    data-action-flow-bound="false"
+    data-action-success-title="ជោគជ័យ"
+    data-action-success-text="{{ $mode === 'edit' ? 'បានកែប្រែប្រភេទឯកសារដោយជោគជ័យ។' : 'បានបង្កើតប្រភេទឯកសារដោយជោគជ័យ។' }}"
+>
+    @csrf
+    @if ($mode === 'edit')
+        @method('PUT')
+    @endif
+
+    {{-- Name --}}
+    <div>
+        <label class="form-label" for="staff-doc-form-name">
+            ឈ្មោះជាភាសាខ្មែរ <span class="text-rose-500">*</span>
+        </label>
+        <input
+            type="text"
+            name="name_kh"
+            id="staff-doc-form-name"
+            value="{{ old('name_kh', $documentRequirement->name_kh) }}"
+            required
+            maxlength="255"
+            class="form-input bg-[#f8fafc]"
+            placeholder="បញ្ចូលឈ្មោះឯកសារ"
+            autofocus
+        >
+        <p class="mt-1.5 hidden text-sm text-rose-500" data-field-error="name_kh"></p>
+    </div>
+
+
+
+    {{-- Sort Order --}}
+    <div>
+        <label class="form-label" for="staff-doc-form-sort-order">
+            លំដាប់ <span class="text-rose-500">*</span>
+        </label>
+        <input
+            type="number"
+            name="sort_order"
+            id="staff-doc-form-sort-order"
+            value="{{ old('sort_order', $documentRequirement->sort_order) }}"
+            min="1"
+            required
+            class="form-input bg-[#f8fafc]"
+        >
+        <p class="mt-1.5 hidden text-sm text-rose-500" data-field-error="sort_order"></p>
+    </div>
+
+    {{-- Status --}}
+    <div>
+        <label class="form-label" for="staff-doc-form-is-active">
+            ស្ថានភាព <span class="text-rose-500">*</span>
+        </label>
+        <select name="is_active" id="staff-doc-form-is-active" class="form-input bg-[#f8fafc]">
+            <option value="1" @selected((string) old('is_active', (int) $documentRequirement->is_active) === '1')>សកម្ម</option>
+            <option value="0" @selected((string) old('is_active', (int) $documentRequirement->is_active) === '0')>មិនសកម្ម</option>
+        </select>
+        <p class="mt-1.5 hidden text-sm text-rose-500" data-field-error="is_active"></p>
+    </div>
+
+    {{-- Actions --}}
+    <div class="flex items-center justify-end gap-3 border-t border-slate-100 pt-5">
+        <button type="button" data-staff-doc-modal-close
+            class="inline-flex items-center rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100">
+            បោះបង់
+        </button>
+        <button type="submit"
+            class="inline-flex items-center justify-center rounded-xl bg-[#356AE6] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#204ec7] disabled:opacity-60">
+            {{ $mode === 'edit' ? 'រក្សាទុកការកែប្រែ' : 'បង្កើតប្រភេទឯកសារ' }}
+        </button>
+    </div>
+</form>

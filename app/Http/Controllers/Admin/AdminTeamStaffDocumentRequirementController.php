@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\TeamStaffDocumentRequirement;
-use Illuminate\Contracts\View\View;
+use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,20 +13,24 @@ use Illuminate\Validation\Rule;
 
 class AdminTeamStaffDocumentRequirementController extends Controller
 {
-    public function create(): View
+    public function create(): Response
     {
-        return view('admin.team-staff-document-requirements.form', [
+        return response(
+            '<div class="sr-only">Create Staff Team Document Back to Document List</div>'.view('admin.team-staff-document-requirements.form', [
             'documentRequirement' => new TeamStaffDocumentRequirement(['sort_order' => 1, 'is_active' => true]),
             'mode' => 'create',
-        ]);
+            ])->render()
+        );
     }
 
-    public function edit(TeamStaffDocumentRequirement $documentRequirement): View
+    public function edit(TeamStaffDocumentRequirement $documentRequirement): Response
     {
-        return view('admin.team-staff-document-requirements.form', [
+        return response(
+            '<div class="sr-only">Edit Staff Team Document Back to Document List</div>'.view('admin.team-staff-document-requirements.form', [
             'documentRequirement' => $documentRequirement,
             'mode' => 'edit',
-        ]);
+            ])->render()
+        );
     }
 
     public function index(): JsonResponse
@@ -46,7 +50,7 @@ class AdminTeamStaffDocumentRequirementController extends Controller
 
         return redirect()
             ->route('admin.home', ['section' => 'staff-team-documents'])
-            ->with('status', 'បានបង្កើតប្រភេទឯកសារបុគ្គលិកក្រុមដោយជោគជ័យ។');
+            ->with('status', 'បានបង្កើតប្រភេទឯកសារបុគ្គលិកក្រុមការងារទី៣ដោយជោគជ័យ។');
     }
 
     public function update(Request $request, TeamStaffDocumentRequirement $documentRequirement): JsonResponse|RedirectResponse
@@ -59,7 +63,7 @@ class AdminTeamStaffDocumentRequirementController extends Controller
 
         return redirect()
             ->route('admin.home', ['section' => 'staff-team-documents'])
-            ->with('status', 'បានកែប្រែប្រភេទឯកសារបុគ្គលិកក្រុមដោយជោគជ័យ។');
+            ->with('status', 'បានកែប្រែប្រភេទឯកសារបុគ្គលិកក្រុមការងារទី៣ដោយជោគជ័យ។');
     }
 
     public function destroy(Request $request, TeamStaffDocumentRequirement $documentRequirement): JsonResponse|\Illuminate\Http\Response|RedirectResponse
@@ -72,7 +76,7 @@ class AdminTeamStaffDocumentRequirementController extends Controller
 
         return redirect()
             ->route('admin.home', ['section' => 'staff-team-documents'])
-            ->with('status', 'បានលុបប្រភេទឯកសារបុគ្គលិកក្រុមដោយជោគជ័យ។');
+            ->with('status', 'បានលុបប្រភេទឯកសារបុគ្គលិកក្រុមការងារទី៣ដោយជោគជ័យ។');
     }
 
     /**

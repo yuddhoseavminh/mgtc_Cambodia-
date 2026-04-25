@@ -6,6 +6,9 @@
         $bannerKhmerSubtitle = $portalContent?->course_page_subtitle ?: 'ប្រព័ន្ធចុះឈ្មោះសិក្សាវគ្គយោធា';
         $bannerKhmerDescription = $portalContent?->course_page_description ?: 'សូមបំពេញព័ត៌មានឱ្យបានត្រឹមត្រូវ និងងាយស្រួលត្រួតពិនិត្យ';
         $selectedCourseId = old('course_id');
+        $currentRankId = old('rank_id');
+        $currentRankName = old('rank_name');
+        $usesCustomRank = old('rank_id') === '__custom__' || trim((string) old('rank_name', '')) !== '';
     @endphp
 
     @if (session('status'))
@@ -72,6 +75,7 @@
                             <input type="text" name="latin_name" value="{{ old('latin_name') }}" placeholder="សូមបំពេញឈ្មោះជាអក្សរឡាតាំង" class="form-input">
                             @include('partials.field-error', ['name' => 'latin_name'])
                         </div>
+                        <div class="md:col-span-2 grid gap-4 sm:gap-5 xl:grid-cols-3">
                         <div>
                             <label class="form-label">* អត្តលេខ</label>
                             <input type="text" name="id_number" value="{{ old('id_number') }}" placeholder="សូមបំពេញអត្តលេខ" class="form-input">
@@ -79,13 +83,40 @@
                         </div>
                         <div>
                             <label class="form-label">* ឋានន្តរសក្តិ</label>
-                            <select name="rank_id" class="form-input">
-                                <option value="">សូមជ្រើសរើសឋានន្តរសក្តិ</option>
-                                @foreach ($ranks as $rank)
-                                    <option value="{{ $rank->id }}" @selected(old('rank_id') == $rank->id)>{{ $rank->name_kh }} / {{ $rank->name_en }}</option>
-                                @endforeach
-                            </select>
+                            <div class="relative">
+                                <select
+                                    id="rank_select"
+                                    name="{{ $usesCustomRank ? '' : 'rank_id' }}"
+                                    class="form-input h-12 w-full min-w-0 bg-white {{ $usesCustomRank ? 'hidden' : '' }}"
+                                    onchange="if(this.value === '__custom__') { this.classList.add('hidden'); this.name = ''; document.getElementById('rank_input').classList.remove('hidden'); document.getElementById('rank_input').name = 'rank_name'; document.getElementById('rank_input').focus(); document.getElementById('rank_cancel_btn').classList.remove('hidden'); }"
+                                >
+                                    <option value="">សូមជ្រើសរើសឋានន្តរសក្តិ</option>
+                                    @foreach ($ranks as $rank)
+                                        <option value="{{ $rank->id }}" @selected(! $usesCustomRank && $currentRankId == $rank->id)>{{ $rank->name_kh }}@if ($rank->name_en)@endif</option>
+                                    @endforeach
+                                    <option value="__custom__" class="font-semibold text-[#356AE6]" @selected($usesCustomRank)>+បញ្ចូលថ្មី...</option>
+                                </select>
+                                <input
+                                    type="text"
+                                    id="rank_input"
+                                    name="{{ $usesCustomRank ? 'rank_name' : '' }}"
+                                    value="{{ $usesCustomRank ? $currentRankName : '' }}"
+                                    class="form-input h-12 w-full min-w-0 bg-white pr-10 {{ $usesCustomRank ? '' : 'hidden' }}"
+                                    placeholder="បញ្ចូលឋានន្តរសក្តិថ្មី..."
+                                >
+                                <button
+                                    type="button"
+                                    id="rank_cancel_btn"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600 {{ $usesCustomRank ? '' : 'hidden' }}"
+                                    onclick="document.getElementById('rank_input').classList.add('hidden'); document.getElementById('rank_input').name = ''; document.getElementById('rank_input').value = ''; document.getElementById('rank_select').classList.remove('hidden'); document.getElementById('rank_select').name = 'rank_id'; document.getElementById('rank_select').value = ''; this.classList.add('hidden');"
+                                    title="បោះបង់ការបញ្ចូលថ្មី និងជ្រើសរើសពីបញ្ជី"
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                            <p class="mt-2 text-sm text-slate-500">ប្រសិនបើមិនមានក្នុងបញ្ជី អ្នកអាចបញ្ចូលឋានន្តរសក្តិថ្មីបាន។</p>
                             @include('partials.field-error', ['name' => 'rank_id'])
+                            @include('partials.field-error', ['name' => 'rank_name'])
                         </div>
                         <div>
                             <label class="form-label">* ភេទ</label>
@@ -97,6 +128,8 @@
                             </select>
                             @include('partials.field-error', ['name' => 'gender'])
                         </div>
+                        </div>
+                        <div class="md:col-span-2 grid gap-4 sm:gap-5 md:grid-cols-2">
                         <div>
                             <label class="form-label">* ថ្ងៃ ខែ ឆ្នាំកំណើត</label>
                             <div class="date-picker" data-date-picker data-placeholder="សូមជ្រើសរើសថ្ងៃខែឆ្នាំកំណើត">
@@ -150,10 +183,10 @@
                         </div>
                         <div>
                             <label class="form-label">* ថ្ងៃ ខែ ឆ្នាំ ចូលបម្រើទ័ព</label>
-                            <div class="date-picker" data-date-picker data-placeholder="សូមជ្រើសរើសថ្ងៃចូលបម្រើទ័ព">
+                            <div class="date-picker" data-date-picker data-placeholder="សូមជ្រើសរើសថ្ងៃចូលបម្រើកងទ័ពទ័ព">
                                 <input type="hidden" name="date_of_enlistment" value="{{ old('date_of_enlistment') }}" data-date-value data-max="{{ now()->toDateString() }}">
                                 <button type="button" class="date-picker-trigger" data-date-toggle aria-expanded="false">
-                                    <span class="date-picker-text" data-date-display>{{ old('date_of_enlistment') ? \Illuminate\Support\Carbon::parse(old('date_of_enlistment'))->locale('km')->translatedFormat('d M Y') : 'សូមជ្រើសរើសថ្ងៃចូលបម្រើទ័ព' }}</span>
+                                    <span class="date-picker-text" data-date-display>{{ old('date_of_enlistment') ? \Illuminate\Support\Carbon::parse(old('date_of_enlistment'))->locale('km')->translatedFormat('d M Y') : 'សូមជ្រើសរើសថ្ងៃចូលបម្រើកងទ័ពទ័ព' }}</span>
                                     <span class="date-picker-icon">
                                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                             <rect x="3" y="4" width="18" height="18" rx="2"></rect>
@@ -199,6 +232,7 @@
                             </div>
                             @include('partials.field-error', ['name' => 'date_of_enlistment'])
                         </div>
+                        </div>
                     </div>
                 </div>
 
@@ -227,7 +261,7 @@
                             @include('partials.field-error', ['name' => 'course_id'])
                         </div>
                         <div>
-                            <label class="form-label">* កម្រិតវប្បធម៌ទូទៅ *</label>
+                            <label class="form-label">* កម្រិតវប្បធម៌ទូទៅ</label>
                             <select name="cultural_level_id" class="form-input">
                                 <option value="">សូមជ្រើសរើសកម្រិតវប្បធម៌ទូទៅ</option>
                                 @foreach ($culturalLevels as $level)
@@ -263,7 +297,7 @@
                             </select>
                             @include('partials.field-error', ['name' => 'family_situation'])
                         </div>
-                        <div class="md:col-span-2">
+                        <div>
                             <label class="form-label">* អាសយដ្ឋានបច្ចុប្បន្ន</label>
                             <select name="current_address" class="form-input">
                                 <option value="">សូមជ្រើសរើសខេត្ត / រាជធានី</option>
@@ -396,6 +430,7 @@
             syncDocumentField();
             select.addEventListener('change', syncDocumentField);
         });
+
     </script>
 
     <script>

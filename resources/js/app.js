@@ -680,10 +680,37 @@ function initAjaxForms() {
 
             try {
 
+                const formData = new FormData(form);
+
+                if (form.id) {
+                    const escapedFormId = window.CSS?.escape
+                        ? window.CSS.escape(form.id)
+                        : form.id.replace(/"/g, '\\"');
+
+                    document.querySelectorAll(`[form="${escapedFormId}"]`).forEach((control) => {
+                        if (form.contains(control) || control.disabled || !control.name || formData.has(control.name)) {
+                            return;
+                        }
+
+                        if ((control.type === 'checkbox' || control.type === 'radio') && !control.checked) {
+                            return;
+                        }
+
+                        if (control.type === 'file') {
+                            Array.from(control.files || []).forEach((file) => {
+                                formData.append(control.name, file);
+                            });
+                            return;
+                        }
+
+                        formData.append(control.name, control.value);
+                    });
+                }
+
                 await window.axios({
                     url: form.action,
                     method: (form.method || 'POST').toLowerCase(),
-                    data: new FormData(form),
+                    data: formData,
                     headers: {
                         Accept: 'application/json',
                     },
@@ -1087,6 +1114,13 @@ function initAdminClock() {
         }
     });
 }
+
+// Expose initialization functions to global scope for dynamic modals
+window.initAdminActionFlows = initAdminActionFlows;
+window.initAjaxForms = initAjaxForms;
+window.initSweetDeleteConfirmations = initSweetDeleteConfirmations;
+window.initSubmitLoadingDialogs = initSubmitLoadingDialogs;
+
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {

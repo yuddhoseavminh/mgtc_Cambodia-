@@ -6,16 +6,22 @@
             'label' => 'ផ្ទាំងគ្រប់គ្រង',
             'items' => [
                 ['key' => 'overview',  'label' => 'ទិដ្ឋភាពទូទៅ',  'meta' => 'សង្ខេប និងស្ថិតិ'],
-                ['key' => 'reports',   'label' => 'របាយការណ៍',    'meta' => 'ក្រាហ្វ និងជំមោ'],
+                // ['key' => 'reports',   'label' => 'របាយការណ៍',    'meta' => 'ក្រាហ្វ និងជំមោ'],
             ],
         ],
         [
             'label' => 'ការចុះឈ្មោះ',
             'items' => [
+                // [
+                //     'key' => 'registration-form',
+                //     'accessKey' => 'applications',
+                //     'label' => 'សមាជិកចុះឈ្មោះសិក្ខាកាម',
+                //     'meta' => 'ទំព័រសាធារណៈ',
+                // ],
                 ['key' => 'applications', 'label' => 'ពាក្យស្នើសុំការចុះឈ្មោះសិក្ខាកាម', 'meta' => 'បញ្ជីចុះឈ្មោះ'],
                 [
                     'key'      => 'create-new',
-                    'label'    => 'ការបង្កើតថ្មី',
+                    'label'    => 'បង្កើតឯកសារ',
                     'meta'     => 'ការកំណត់',
                     'subItems' => [
                         ['key' => 'courses',   'label' => 'វគ្គសិក្សា'],
@@ -64,6 +70,7 @@
                 ['key' => 'users',                      'label' => 'អ្នកប្រើប្រាស់',         'meta' => 'គណនី'],
                 ['key' => 'profile',                    'label' => 'ប្រវត្តិរូប',            'meta' => 'ព័ត៌មានគណនី'],
                 ['key' => 'design-template',            'label' => 'រចនាទំព័រដើម',           'meta' => 'ប្លង់'],
+                ['key' => 'staff-team-template',        'label' => 'គំរូបុគ្គលិកក្រុមការងារទី៣', 'meta' => 'កែ UI'],
                 ['key' => 'course-template',            'label' => 'គំរូវគ្គសិក្សា',         'meta' => 'គំរូ'],
                 ['key' => 'test-taking-staff-template', 'label' => 'គំរូបុគ្គលិកសាកល្បង',  'meta' => 'គំរូ'],
             ],
@@ -74,12 +81,14 @@
         'overview'                    => '<path d="M3 12.5 12 4l9 8.5"/><path d="M5.5 11.5V20h13v-8.5"/>',
         'reports'                     => '<path d="M4 19h16"/><path d="M8 16V9"/><path d="M12 16V5"/><path d="M16 16v-3"/>',
         'applications'                => '<path d="M8 6h8"/><path d="M8 10h8"/><path d="M8 14h5"/><rect x="5" y="3" width="14" height="18" rx="2"/>',
+        'registration-form'           => '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6"/><path d="M12 12v6"/><path d="M9 15h6"/>',
         'courses'                     => '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
         'ranks'                       => '<path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z"/><path d="M6 10.5V15c0 2 2.7 3.5 6 3.5s6-1.5 6-3.5v-4.5"/>',
         'levels'                      => '<path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h6"/><rect x="4" y="4" width="16" height="16" rx="2"/>',
         'documents'                   => '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/>',
         'create-new'                  => '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>',
         'design-template'             => '<rect x="4" y="9" width="16" height="8" rx="2"/><path d="M4 13h16"/><path d="M4 5a2 2 0 0 1 2-2h3l2 2h7a2 2 0 0 1 2 2v2H4z"/>',
+        'staff-team-template'         => '<rect x="4" y="9" width="16" height="8" rx="2"/><path d="M4 13h16"/><path d="M4 5a2 2 0 0 1 2-2h3l2 2h7a2 2 0 0 1 2 2v2H4z"/>',
         'course-template'             => '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
         'create-staff-docs'           => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>',
         'staff-team'                  => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -357,10 +366,10 @@ summary::-webkit-details-marker { display: none; }
                             ->filter(function (array $item) use ($canAccessSection) {
                                 if (isset($item['subItems'])) {
                                     return collect($item['subItems'])
-                                        ->contains(fn (array $subItem): bool => $canAccessSection($subItem['key']));
+                                        ->contains(fn (array $subItem): bool => $canAccessSection($subItem['accessKey'] ?? $subItem['key']));
                                 }
 
-                                return $canAccessSection($item['key']);
+                                return $canAccessSection($item['accessKey'] ?? $item['key']);
                             })
                             ->values();
                     @endphp
@@ -396,7 +405,7 @@ summary::-webkit-details-marker { display: none; }
                                             @foreach ($visibleSubItems as $subItem)
                                                 @php
                                                     $active = $section === $subItem['key'];
-                                                    $href   = route('admin.home', ['section' => $subItem['key']]);
+                                                    $href   = $subItem['href'] ?? route('admin.home', ['section' => $subItem['key']]);
                                                 @endphp
                                                 <a href="{{ $href }}" class="sb-sub-link {{ $active ? 'is-active' : '' }}">
                                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;">
@@ -411,7 +420,7 @@ summary::-webkit-details-marker { display: none; }
                                 @else
                                     @php
                                         $active = $section === $item['key'];
-                                        $href   = route('admin.home', ['section' => $item['key']]);
+                                        $href   = $item['href'] ?? route('admin.home', ['section' => $item['key']]);
                                     @endphp
                                     <a href="{{ $href }}" class="sb-link {{ $active ? 'is-active' : '' }}" data-label="{{ $item['label'] }}">
                                         <span class="sb-icon">
@@ -480,5 +489,3 @@ summary::-webkit-details-marker { display: none; }
         });
     });
 </script>
-
-

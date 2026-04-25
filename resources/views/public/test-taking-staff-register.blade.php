@@ -80,6 +80,12 @@
                             </div>
 
                             <div>
+                                <label class="form-label">* អត្តលេខ</label>
+                                <input type="text" name="id_number" value="{{ old('id_number') }}" placeholder="សូមបញ្ចូលអត្តលេខ" class="form-input">
+                                @include('partials.field-error', ['name' => 'id_number'])
+                            </div>
+
+                            <div>
                                 <label class="form-label">* ឋានន្តរសក្តិ</label>
                                 <select name="test_taking_staff_rank_id" class="form-input">
                                     <option value="">សូមជ្រើសរើសឋានន្តរសក្តិ</option>
@@ -149,11 +155,11 @@
                             </div>
 
                             <div>
-                                <label class="form-label">* ថ្ងៃចូលបម្រើកងទ័ព</label>
-                                <div class="date-picker" data-date-picker data-placeholder="សូមជ្រើសរើសថ្ងៃចូលបម្រើកងទ័ព">
+                                <label class="form-label">* ថ្ងៃចូលបម្រើកងទ័ពកងទ័ព</label>
+                                <div class="date-picker" data-date-picker data-placeholder="សូមជ្រើសរើសថ្ងៃចូលបម្រើកងទ័ពកងទ័ព">
                                     <input type="hidden" name="military_service_day" value="{{ old('military_service_day') }}" data-date-value data-max="{{ now()->toDateString() }}">
                                     <button type="button" class="date-picker-trigger" data-date-toggle aria-expanded="false">
-                                        <span class="date-picker-text" data-date-display>{{ old('military_service_day') ? \Illuminate\Support\Carbon::parse(old('military_service_day'))->locale('km')->translatedFormat('d M Y') : 'សូមជ្រើសរើសថ្ងៃចូលបម្រើកងទ័ព' }}</span>
+                                        <span class="date-picker-text" data-date-display>{{ old('military_service_day') ? \Illuminate\Support\Carbon::parse(old('military_service_day'))->locale('km')->translatedFormat('d M Y') : 'សូមជ្រើសរើសថ្ងៃចូលបម្រើកងទ័ពកងទ័ព' }}</span>
                                         <span class="date-picker-icon">
                                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                                 <rect x="3" y="4" width="18" height="18" rx="2"></rect>

@@ -4,10 +4,10 @@
     @php
         $isEdit = $mode === 'edit';
         $roleLabels = [
-            'Admin' => 'អ្នកគ្រប់គ្រង',
-            'Manager' => 'អ្នកចាត់ការ',
-            'Staff' => 'បុគ្គលិក',
-            'Viewer' => 'អ្នកមើល',
+            // 'Admin' => 'អ្នកគ្រប់គ្រង',
+            // 'Manager' => 'អ្នកចាត់ការ',
+            // 'Staff' => 'បុគ្គលិក',
+            // 'Viewer' => 'អ្នកមើល',
         ];
         $genderLabels = [
             'Male' => 'ប្រុស',
@@ -15,16 +15,22 @@
             'Other' => 'ផ្សេងទៀត',
         ];
         $existingDocuments = collect($teamStaff->documents ?? [])->values();
+        $indexedDocuments = $existingDocuments
+            ->map(fn ($document, $index) => [...$document, 'document_index' => $index])
+            ->values();
         $documentRequirements = collect($documentRequirements ?? [])->values();
-        $documentsByRequirementSlug = $existingDocuments
+        $documentsByRequirementSlug = $indexedDocuments
             ->filter(fn ($document) => filled($document['requirement_slug'] ?? null))
-            ->keyBy(fn ($document) => $document['requirement_slug']);
-        $legacyDocuments = $existingDocuments
+            ->groupBy(fn ($document) => $document['requirement_slug']);
+        $legacyDocuments = $indexedDocuments
             ->filter(fn ($document) => blank($document['requirement_slug'] ?? null))
             ->values();
         $previewIdNumber = old('id_number', $credentialPreview['password'] ?? $teamStaff->id_number);
         $previewUsername = $credentialPreview['username']
             ?? \App\Models\TeamStaff::usernameBase((string) old('name_latin', $teamStaff->name_latin));
+        $provinceOptions = array_values(config('military-registration.province_labels', []));
+        $provinceLabels = config('military-registration.province_labels', []);
+        $currentProvince = old('pob', $provinceLabels[$teamStaff->pob] ?? $teamStaff->pob);
     @endphp
 
     <div class="w-full">
@@ -82,7 +88,7 @@
                                             <p class="text-xs font-semibold uppercase tracking-[0.24em] text-rose-200">{{ $isEdit ? 'គណនីចូលប្រព័ន្ធ' : 'ការមើលជាមុននៃគណនីចូល' }}</p>
                                             <h4 class="mt-2 text-2xl font-semibold tracking-tight">{{ $isEdit ? 'ព័ត៌មានចូលប្រើបច្ចុប្បន្ន' : 'គណនីដែលប្រព័ន្ធបង្កើត' }}</h4>
                                             <p class="mt-2 text-sm leading-7 text-slate-200">
-                                                ឈ្មោះអ្នកប្រើត្រូវគ្នានឹងឈ្មោះឡាតាំង។ លេខសម្ងាត់ដើមគឺលេខសម្គាល់បុគ្គលិក។
+                                                ឈ្មោះអ្នកប្រើត្រូវគ្នានឹងឈ្មោះឡាតាំង។ លេខសម្ងាត់ដើមគឺអត្តលេខ។
                                             </p>
                                         </div>
 
@@ -142,8 +148,8 @@
                                             </div>
 
                                             <div class="md:col-span-2">
-                                                <label class="form-label">លេខសម្គាល់បុគ្គលិក</label>
-                                                <input type="text" name="id_number" value="{{ old('id_number', $teamStaff->id_number) }}" class="form-input bg-slate-50" placeholder="បញ្ចូលលេខសម្គាល់បុគ្គលិក">
+                                                <label class="form-label">អត្តលេខ</label>
+                                                <input type="text" name="id_number" value="{{ old('id_number', $teamStaff->id_number) }}" class="form-input bg-slate-50" placeholder="បញ្ចូលអត្តលេខ">
                                                 @include('partials.field-error', ['name' => 'id_number'])
                                             </div>
 
@@ -163,6 +169,98 @@
                                                 <input type="text" name="phone_number" value="{{ old('phone_number', $teamStaff->phone_number) }}" class="form-input bg-slate-50" placeholder="បញ្ចូលលេខទូរស័ព្ទ">
                                                 @include('partials.field-error', ['name' => 'phone_number'])
                                             </div>
+
+                                            <div>
+                                                <label class="form-label">ថ្ងៃខែឆ្នាំកំណើត</label>
+                                                <style>
+                                                    .flatpickr-input[readonly] {
+                                                        padding-left: 3rem !important;
+                                                    }
+                                                </style>
+                                                <div class="relative">
+                                                    <input 
+                                                        type="text" 
+                                                        id="dob_picker" 
+                                                        name="dob" 
+                                                        value="{{ old('dob', $teamStaff->dob?->format('Y-m-d')) }}" 
+                                                        class="form-input bg-slate-50 !pl-12" 
+                                                        style="padding-left: 3rem !important;"
+                                                        placeholder="ជ្រើសរើសថ្ងៃខែឆ្នាំកំណើត"
+                                                        readonly
+                                                    >
+                                                    <div class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#356AE6]">
+                                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                                                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                                                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                                                            <circle cx="9" cy="14" r="1.2"></circle>
+                                                            <circle cx="15" cy="14" r="1.2"></circle>
+                                                            <circle cx="9" cy="18" r="1.2"></circle>
+                                                            <circle cx="15" cy="18" r="1.2"></circle>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                @include('partials.field-error', ['name' => 'dob'])
+                                            </div>
+
+                                            <div>
+                                                <label class="form-label">ថ្ងៃ ខែ ឆ្នាំ ចូលបម្រើទ័ព</label>
+                                                <div class="relative">
+                                                    <input
+                                                        type="text"
+                                                        id="date_of_enlistment_picker"
+                                                        name="date_of_enlistment"
+                                                        value="{{ old('date_of_enlistment', $teamStaff->date_of_enlistment?->format('Y-m-d')) }}"
+                                                        class="form-input bg-slate-50 !pl-12"
+                                                        style="padding-left: 3rem !important;"
+                                                        placeholder="ជ្រើសរើសថ្ងៃ ខែ ឆ្នាំ ចូលបម្រើទ័ព"
+                                                        readonly
+                                                    >
+                                                    <div class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#356AE6]">
+                                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                                                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                                                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                                                            <circle cx="9" cy="14" r="1.2"></circle>
+                                                            <circle cx="15" cy="14" r="1.2"></circle>
+                                                            <circle cx="9" cy="18" r="1.2"></circle>
+                                                            <circle cx="15" cy="18" r="1.2"></circle>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                @include('partials.field-error', ['name' => 'date_of_enlistment'])
+                                            </div>
+
+                                            <div>
+                                                <label class="form-label">ទីកន្លែងកំណើត</label>
+                                                <select name="pob" class="form-input bg-slate-50">
+                                                    <option value="">ជ្រើសរើសខេត្ត/រាជធានី</option>
+                                                    @foreach ($provinceOptions as $provinceOption)
+                                                        <option value="{{ $provinceOption }}" @selected($currentProvince === $provinceOption)>{{ $provinceOption }}</option>
+                                                    @endforeach
+                                                </select>
+                                                @include('partials.field-error', ['name' => 'pob'])
+                                            </div>
+
+                                            {{-- <div class="md:col-span-2 grid grid-cols-3 gap-4">
+                                                <div>
+                                                    <label class="form-label">ទទួស (កូដហ្វឹកហាត់)</label>
+                                                    <input type="text" name="training_code" value="{{ old('training_code', $teamStaff->training_code) }}" class="form-input bg-slate-50" placeholder="ឧ៖ VE8">
+                                                    @include('partials.field-error', ['name' => 'training_code'])
+                                                </div>
+                                                <div>
+                                                    <label class="form-label">ដឹកនាំដោយ (យោង)</label>
+                                                    <input type="text" name="leader_ref" value="{{ old('leader_ref', $teamStaff->leader_ref) }}" class="form-input bg-slate-50" placeholder="ឧ៖ 26">
+                                                    @include('partials.field-error', ['name' => 'leader_ref'])
+                                                </div>
+                                                <div>
+                                                    <label class="form-label">មាតុ (លេខយោង)</label>
+                                                    <input type="text" name="origin_ref" value="{{ old('origin_ref', $teamStaff->origin_ref) }}" class="form-input bg-slate-50" placeholder="ឧ៖ 19">
+                                                    @include('partials.field-error', ['name' => 'origin_ref'])
+                                                </div>
+                                            </div> --}}
 
                                             <div>
                                                 <label class="form-label">មុខតំណែង</label>
@@ -205,15 +303,38 @@
                                             <div>
                                                 <label class="form-label">តួនាទី</label>
                                                 @php($currentRole = old('role', $teamStaff->role))
-                                                <select name="role" class="form-input bg-slate-50">
-                                                    <option value="">ជ្រើសរើសតួនាទី</option>
-                                                    @foreach ($roleOptions as $roleOption)
-                                                        <option value="{{ $roleOption }}" @selected($currentRole === $roleOption)>{{ $roleLabels[$roleOption] ?? $roleOption }}</option>
-                                                    @endforeach
-                                                    @if (filled($currentRole) && ! in_array($currentRole, $roleOptions, true))
-                                                        <option value="{{ $currentRole }}" selected>{{ $currentRole }}</option>
-                                                    @endif
-                                                </select>
+                                                @php($isCustomRole = filled($currentRole) && ! in_array($currentRole, $roleOptions, true))
+                                                <div class="relative">
+                                                    <select 
+                                                        id="role_select" 
+                                                        name="{{ $isCustomRole ? '' : 'role' }}" 
+                                                        class="form-input bg-slate-50 {{ $isCustomRole ? 'hidden' : '' }}" 
+                                                        onchange="if(this.value === '__NEW__') { this.classList.add('hidden'); this.name = ''; document.getElementById('role_input').classList.remove('hidden'); document.getElementById('role_input').name = 'role'; document.getElementById('role_input').focus(); document.getElementById('role_cancel_btn').classList.remove('hidden'); }"
+                                                    >
+                                                        <option value="">ជ្រើសរើសតួនាទី</option>
+                                                        @foreach ($roleOptions as $roleOption)
+                                                            <option value="{{ $roleOption }}" @selected($currentRole === $roleOption)>{{ $roleLabels[$roleOption] ?? $roleOption }}</option>
+                                                        @endforeach
+                                                        <option value="__NEW__" class="font-semibold text-[#356AE6]">+ បញ្ចូលថ្មី...</option>
+                                                    </select>
+                                                    <input 
+                                                        type="text" 
+                                                        id="role_input" 
+                                                        name="{{ $isCustomRole ? 'role' : '' }}" 
+                                                        value="{{ $isCustomRole ? $currentRole : '' }}" 
+                                                        class="form-input bg-slate-50 pr-10 {{ $isCustomRole ? '' : 'hidden' }}" 
+                                                        placeholder="បញ្ចូលតួនាទីថ្មី..."
+                                                    >
+                                                    <button 
+                                                        type="button" 
+                                                        id="role_cancel_btn" 
+                                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition {{ $isCustomRole ? '' : 'hidden' }}" 
+                                                        onclick="document.getElementById('role_input').classList.add('hidden'); document.getElementById('role_input').name = ''; document.getElementById('role_input').value = ''; document.getElementById('role_select').classList.remove('hidden'); document.getElementById('role_select').name = 'role'; document.getElementById('role_select').value = ''; this.classList.add('hidden');" 
+                                                        title="បោះបង់ការបញ្ចូលថ្មី និងជ្រើសរើសពីបញ្ជី"
+                                                    >
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                                                    </button>
+                                                </div>
                                                 @include('partials.field-error', ['name' => 'role'])
                                             </div>
                                         </div>
@@ -222,7 +343,7 @@
                                     <section class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_14px_30px_rgba(15,23,42,0.05)] sm:p-7 xl:sticky xl:top-6 xl:self-start">
                                         <div class="mb-6 flex flex-col gap-3">
                                             <div>
-                                                <h4 class="text-lg font-semibold text-slate-950">រូបភាពប្រវត្តិរូប</h4>
+                                                <h4 class="text-lg font-semibold text-slate-950">រូបភាពProfile</h4>
                                                 <p class="mt-1 text-sm text-slate-500">បញ្ចូលរូបភាពសម្រាប់បុគ្គលិកនេះ។</p>
                                             </div>
                                             <span class="w-fit rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">ផ្នែក ០២</span>
@@ -263,16 +384,59 @@
                                     @if ($documentRequirements->isNotEmpty())
                                         <div class="grid gap-5 md:grid-cols-2">
                                             @foreach ($documentRequirements as $documentRequirement)
-                                                @php($linkedDocument = $documentsByRequirementSlug->get($documentRequirement->slug))
+                                                @php($requirementDocuments = $documentsByRequirementSlug->get($documentRequirement->slug, collect())->values())
                                                 <div class="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4">
                                                     <div class="flex items-start justify-between gap-3">
                                                         <div class="min-w-0">
                                                             <p class="text-sm font-semibold text-slate-900">{{ $documentRequirement->name_kh }}</p>
-                                                            <p class="mt-1 break-all text-xs text-slate-500">{{ $linkedDocument['original_name'] ?? 'មិនទាន់មានឯកសារបញ្ចូលទេ' }}</p>
+                                                            <p class="mt-1 break-all text-xs text-slate-500">
+                                                                {{ $requirementDocuments->isNotEmpty() ? 'បានបញ្ចូល '.$requirementDocuments->count().' ឯកសារ' : 'មិនទាន់មានឯកសារបញ្ចូលទេ' }}
+                                                            </p>
                                                         </div>
-                                                        <span class="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold {{ $linkedDocument ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-                                                            {{ $linkedDocument ? 'បានបញ្ចូល' : 'ខ្វះឯកសារ' }}
+                                                        <span class="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold {{ $requirementDocuments->isNotEmpty() ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                                                            {{ $requirementDocuments->isNotEmpty() ? $requirementDocuments->count().' ឯកសារ' : 'ខ្វះឯកសារ' }}
                                                         </span>
+                                                    </div>
+
+                                                    <div class="mt-4 space-y-2">
+                                                        @forelse ($requirementDocuments as $document)
+                                                            @php($uploadedBy = strtolower((string) ($document['uploaded_by'] ?? 'admin')))
+                                                            <div class="rounded-[1rem] border border-slate-200 bg-white px-3 py-3">
+                                                                <p class="break-all text-xs font-semibold text-slate-800">{{ $document['original_name'] ?? '-' }}</p>
+                                                                <div class="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                                                                    <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700">
+                                                                        {{ $uploadedBy === 'staff' ? 'បុគ្គលិក' : 'អេដមីន' }}
+                                                                    </span>
+                                                                    @if (!empty($document['uploaded_at']))
+                                                                        <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700">
+                                                                            {{ \Illuminate\Support\Carbon::parse($document['uploaded_at'])->format('d/m/Y H:i') }}
+                                                                        </span>
+                                                                    @endif
+                                                                </div>
+                                                                <div class="mt-3 flex flex-wrap gap-2">
+                                                                    <a href="{{ route('team-staff.documents.show', [$teamStaff, $document['document_index']]) }}" target="_blank" rel="noreferrer" class="inline-flex items-center rounded-[0.85rem] border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100">
+                                                                        មើល
+                                                                    </a>
+                                                                    <a href="{{ route('team-staff.documents.download', [$teamStaff, $document['document_index']]) }}" class="inline-flex items-center rounded-[0.85rem] border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100">
+                                                                        ទាញយក
+                                                                    </a>
+                                                                    @if ($isEdit)
+                                                                        <button
+                                                                            type="submit"
+                                                                            form="delete-document-{{ $document['document_index'] }}"
+                                                                            onclick="return confirm('តើអ្នកចង់លុបឯកសារនេះមែនទេ?')"
+                                                                            class="inline-flex items-center rounded-[0.85rem] border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                                                                        >
+                                                                            លុប
+                                                                        </button>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                        @empty
+                                                            <div class="rounded-[1rem] border border-dashed border-slate-300 bg-white px-3 py-4 text-center text-xs text-slate-500">
+                                                                មិនទាន់មានឯកសារបញ្ចូលទេ
+                                                            </div>
+                                                        @endforelse
                                                     </div>
 
                                                     <div class="mt-4 space-y-3">
@@ -284,11 +448,6 @@
                                                         >
                                                         @include('partials.field-error', ['name' => 'documents.'.$documentRequirement->id])
 
-                                                        @if ($isEdit && $linkedDocument)
-                                                            <a href="{{ route('team-staff.documents.download-by-requirement', [$teamStaff, $documentRequirement]) }}" class="inline-flex items-center rounded-[1.1rem] border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100">
-                                                                ទាញយកឯកសារបច្ចុប្បន្ន
-                                                            </a>
-                                                        @endif
                                                     </div>
                                                 </div>
                                             @endforeach
@@ -305,14 +464,28 @@
                                         <div class="mt-6 rounded-[1.35rem] border border-slate-200 bg-white p-4">
                                             <p class="text-sm font-semibold text-slate-900">ឯកសារចាស់</p>
                                             <p class="mt-1 text-sm text-slate-500">ឯកសារទាំងនេះនៅតែភ្ជាប់ជាមួយកំណត់ត្រានេះ ប៉ុន្តែមិនទាន់ភ្ជាប់ជាមួយតម្រូវការឯកសារដែលកំពុងប្រើទេ។</p>
-                                            <div class="mt-3 grid gap-3 md:grid-cols-2">
+                                            <div class="mt-3 grid gap-3">
                                                 @foreach ($legacyDocuments as $document)
-                                                    @php($documentIndex = $existingDocuments->search(fn ($entry) => ($entry['path'] ?? null) === ($document['path'] ?? null)))
-                                                    @if ($documentIndex !== false)
-                                                        <a href="{{ route('team-staff.documents.download', [$teamStaff, $documentIndex]) }}" class="inline-flex items-center rounded-[1.1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
-                                                            {{ $document['label'] ?? 'ឯកសារ' }}: {{ $document['original_name'] ?? '-' }}
-                                                        </a>
-                                                    @endif
+                                                    <div class="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                                                        <p class="text-sm font-semibold text-slate-900">{{ $document['label'] ?? 'ឯកសារ' }}</p>
+                                                        <p class="mt-1 break-all text-xs text-slate-500">{{ $document['original_name'] ?? '-' }}</p>
+                                                        <div class="mt-3 flex flex-wrap gap-2">
+                                                            <a href="{{ route('team-staff.documents.show', [$teamStaff, $document['document_index']]) }}" target="_blank" rel="noreferrer" class="inline-flex items-center rounded-[0.85rem] border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100">
+                                                                មើល
+                                                            </a>
+                                                            <a href="{{ route('team-staff.documents.download', [$teamStaff, $document['document_index']]) }}" class="inline-flex items-center rounded-[0.85rem] border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100">
+                                                                ទាញយក
+                                                            </a>
+                                                            <button
+                                                                type="submit"
+                                                                form="delete-document-{{ $document['document_index'] }}"
+                                                                onclick="return confirm('តើអ្នកចង់លុបឯកសារនេះមែនទេ?')"
+                                                                class="inline-flex items-center rounded-[0.85rem] border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                                                            >
+                                                                លុប
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 @endforeach
                                             </div>
                                         </div>
@@ -333,6 +506,15 @@
                                     </div>
                                 </section>
                             </form>
+
+                            @if ($isEdit && $indexedDocuments->isNotEmpty())
+                                @foreach ($indexedDocuments as $document)
+                                    <form id="delete-document-{{ $document['document_index'] }}" method="POST" action="{{ route('team-staff.documents.destroy', [$teamStaff, $document['document_index']]) }}" class="hidden">
+                                        @csrf
+                                        @method('DELETE')
+                                    </form>
+                                @endforeach
+                            @endif
                         </div>
                     </div>
 
@@ -421,7 +603,29 @@
                                     avatarPreviewEmpty.classList.remove('grid');
                                 });
                             }
-                        })();
+                        if(window.flatpickr){
+                            flatpickr('#dob_picker', {
+                                locale: 'km',
+                                dateFormat: 'Y-m-d',
+                                altInput: true,
+                                altFormat: 'd F, Y',
+                                allowInput: false,
+                                disableMobile: true,
+                                altInputClass: 'form-input bg-slate-50 !pl-12 flatpickr-input'
+                            });
+
+                            flatpickr('#date_of_enlistment_picker', {
+                                locale: 'km',
+                                dateFormat: 'Y-m-d',
+                                altInput: true,
+                                altFormat: 'd F, Y',
+                                allowInput: false,
+                                disableMobile: true,
+                                maxDate: 'today',
+                                altInputClass: 'form-input bg-slate-50 !pl-12 flatpickr-input'
+                            });
+                        }
+                    })();
                     </script>
 
                     <footer class="admin-footer-band flex flex-col gap-3 px-4 py-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
@@ -436,3 +640,4 @@
         </div>
     </div>
 @endsection
+

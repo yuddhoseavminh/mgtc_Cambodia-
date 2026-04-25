@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PortalContent;
-use Illuminate\Support\Facades\Storage;
+use App\Support\UploadStorage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PortalBannerImageController extends Controller
@@ -21,6 +21,10 @@ class PortalBannerImageController extends Controller
                 $content->test_taking_staff_page_banner_image_path,
                 $content->test_taking_staff_page_banner_image_original_name ?? 'test-taking-staff-page-banner-image',
             ],
+            'staff-logo' => [
+                $content->staff_logo_path,
+                $content->staff_logo_original_name ?? 'staff-logo',
+            ],
             default => [
                 $content->banner_image_path,
                 $content->banner_image_original_name ?? 'portal-banner-image',
@@ -29,7 +33,7 @@ class PortalBannerImageController extends Controller
 
         abort_unless($path, 404);
 
-        return Storage::disk('local')->response(
+        return UploadStorage::readDisk($path)->response(
             $path,
             $name,
         );

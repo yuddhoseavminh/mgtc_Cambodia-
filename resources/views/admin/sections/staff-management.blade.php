@@ -52,8 +52,17 @@
                 <div class="flex min-w-0 flex-col gap-3 xl:ml-auto xl:w-auto xl:flex-row xl:items-center xl:justify-end">
                     <select name="staff_gender" class="form-input h-12 w-full min-w-0 bg-white xl:w-[160px]" data-auto-submit-select>
                         <option value="">ភេទទាំងអស់</option>
+                        @php
+                            $genderMapLocal = [
+                                'Male'   => 'ប្រុស',
+                                'Female' => 'ស្រី',
+                                'Other'  => 'ផ្សេងទៀត',
+                            ];
+                        @endphp
                         @foreach ($teamStaffGenders as $gender)
-                            <option value="{{ $gender }}" @selected($teamStaffFilters['gender'] === $gender)>{{ $gender }}</option>
+                            <option value="{{ $gender }}" @selected($teamStaffFilters['gender'] === $gender)>
+                                {{ $genderMapLocal[$gender] ?? $gender }}
+                            </option>
                         @endforeach
                     </select>
                     <select name="staff_role" class="form-input h-12 w-full min-w-0 bg-white xl:w-[160px]" data-auto-submit-select>
@@ -90,6 +99,8 @@
                         <th class="whitespace-nowrap px-6 py-4">ឈ្មោះឡាតាំង</th>
                         <th class="whitespace-nowrap px-6 py-4">អត្តលេខ</th>
                         <th class="whitespace-nowrap px-6 py-4">ឋានន្តរស័ក្តិយោធា</th>
+                        <th class="whitespace-nowrap px-6 py-4">ថ្ងៃខែឆ្នាំកំណើត</th>
+                        <th class="whitespace-nowrap px-6 py-4">ថ្ងៃចូលបម្រើកងទ័ព</th>
                         <th class="whitespace-nowrap px-6 py-4">ភេទ</th>
                         <th class="whitespace-nowrap px-6 py-4">មុខតំណែង</th>
                         <th class="whitespace-nowrap px-6 py-4">លេខទូរស័ព្ទ</th>
@@ -109,6 +120,28 @@
                             'bg-lime-100 text-lime-700 ring-1 ring-inset ring-lime-200',
                             'bg-fuchsia-100 text-fuchsia-700 ring-1 ring-inset ring-fuchsia-200',
                         ];
+
+                        $genderMap = [
+                            'Male'   => 'ប្រុស',
+                            'Female' => 'ស្រី',
+                            'Other'  => 'ផ្សេងទៀត',
+                        ];
+
+                        $khmerMonths = [
+                            1 => 'មករា', 2 => 'កុម្ភៈ', 3 => 'មីនា', 4 => 'មេសា', 
+                            5 => 'ឧសភា', 6 => 'មិថុនា', 7 => 'កក្កដា', 8 => 'សីហា', 
+                            9 => 'កញ្ញា', 10 => 'តុលា', 11 => 'វិច្ឆិកា', 12 => 'ធ្នូ'
+                        ];
+
+                        $formatKhmerDate = static function ($date) use ($khmerMonths): string {
+                            if (!$date instanceof \DateTimeInterface) return (string) ($date ?: '-');
+                            
+                            $day = $date->format('d');
+                            $month = (int) $date->format('m');
+                            $year = $date->format('Y');
+
+                            return "{$day} {$khmerMonths[$month]} {$year}";
+                        };
 
                         $resolveStaffBadgeClass = static function (?string $value) use ($staffBadgeClasses): string {
                             $value = trim((string) $value);
@@ -155,7 +188,9 @@
                                     {{ $staff->military_rank ?: '-' }}
                                 </span>
                             </td>
-                            <td class="whitespace-nowrap px-6 py-5 text-slate-500" data-label="ភេទ">{{ $staff->gender }}</td>
+                            <td class="whitespace-nowrap px-6 py-5 text-slate-500" data-label="ថ្ងៃខែឆ្នាំកំណើត">{{ $formatKhmerDate($staff->dob) }}</td>
+                            <td class="whitespace-nowrap px-6 py-5 text-slate-500" data-label="ថ្ងៃចូលបម្រើកងទ័ព">{{ $formatKhmerDate($staff->date_of_enlistment) }}</td>
+                            <td class="whitespace-nowrap px-6 py-5 text-slate-500" data-label="ភេទ">{{ $genderMap[$staff->gender] ?? $staff->gender }}</td>
                             <td class="whitespace-nowrap px-6 py-5 text-slate-500" data-label="តួនាទី">{{ $staff->position }}</td>
                             <td class="whitespace-nowrap px-6 py-5 text-sm font-medium text-slate-600" data-label="លេខទូរស័ព្ទ">{{ $staff->phone_number }}</td>
                             <td class="whitespace-nowrap px-6 py-5" data-label="សិទ្ធិ">
@@ -175,7 +210,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="px-6 py-20">
+                            <td colspan="13" class="px-6 py-20">
                                 <div class="mx-auto flex max-w-md flex-col items-center text-center">
                                     <div class="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-100 text-slate-400">
                                         <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">

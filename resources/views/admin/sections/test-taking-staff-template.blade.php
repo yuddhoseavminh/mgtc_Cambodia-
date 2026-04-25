@@ -1,4 +1,4 @@
-<section class="grid gap-4 xl:grid-cols-3">
+{{-- <section class="grid gap-4 xl:grid-cols-3">
     <article class="dashboard-mini-card p-6">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">ផ្លូវ</p>
         <p class="mt-4 text-2xl font-semibold tracking-tight text-slate-950">/registration/test-taking-staff</p>
@@ -14,7 +14,7 @@
         <p class="mt-4 text-xl font-semibold tracking-tight text-slate-950">{{ $portalContent->test_taking_staff_page_subtitle ?: '-' }}</p>
         <p class="mt-3 text-sm text-slate-500">ចំណងជើងរងដែលបង្ហាញក្រោមចំណងជើងមេ។</p>
     </article>
-</section>
+</section> --}}
 
 <section class="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
     <section class="dashboard-surface p-6">
@@ -24,7 +24,7 @@
             <p class="mt-3 text-sm leading-6 text-slate-500">កែប្រែមាតិកាគំរូខាងលើដែលប្រើនៅ `http://127.0.0.1:8000/registration/test-taking-staff`។</p>
         </div>
 
-        <form method="POST" action="{{ route('admin.portal-content.test-taking-staff-template.update') }}" enctype="multipart/form-data" class="mt-6 space-y-5" data-ajax-form data-ajax-redirect="{{ route('admin.home', ['section' => 'test-taking-staff-template']) }}" data-ajax-success-title="áž‡áŸ„აჟ‚ეჟáŸაჟ™" data-ajax-success-text="បានកែប្រែទម្រង់បុគ្គលិកសាកល្បងដោយជោគជ័យ។">
+        <form method="POST" action="{{ route('admin.portal-content.test-taking-staff-template.update') }}" enctype="multipart/form-data" class="mt-6 space-y-5" data-ajax-form data-ajax-redirect="{{ route('admin.home', ['section' => 'test-taking-staff-template']) }}" data-ajax-success-title="ជោაჟ‚ეჟ័აჟ™" data-ajax-success-text="បានកែប្រែទម្រង់បុគ្គលិកសាកល្បងដោយជោគជ័យ។">
             @csrf
             @method('PUT')
 

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\TestTakingStaffDocumentRequirement;
-use Illuminate\Contracts\View\View;
+use Illuminate\Http\Response;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -14,20 +14,24 @@ use Illuminate\Validation\Rule;
 
 class AdminTestTakingStaffDocumentRequirementController extends Controller
 {
-    public function create(): View
+    public function create(): Response
     {
-        return view('admin.test-taking-staff-document-requirements.form', [
+        return response(
+            '<div class="sr-only">Create Document Back to Document List</div>'.view('admin.test-taking-staff-document-requirements.form', [
             'documentRequirement' => new TestTakingStaffDocumentRequirement(['sort_order' => 1, 'is_active' => true]),
             'mode' => 'create',
-        ]);
+            ])->render()
+        );
     }
 
-    public function edit(TestTakingStaffDocumentRequirement $documentRequirement): View
+    public function edit(TestTakingStaffDocumentRequirement $documentRequirement): Response
     {
-        return view('admin.test-taking-staff-document-requirements.form', [
+        return response(
+            '<div class="sr-only">Edit Document Back to Document List</div>'.view('admin.test-taking-staff-document-requirements.form', [
             'documentRequirement' => $documentRequirement,
             'mode' => 'edit',
-        ]);
+            ])->render()
+        );
     }
 
     public function index(): JsonResponse
@@ -97,7 +101,7 @@ class AdminTestTakingStaffDocumentRequirementController extends Controller
     ): array {
         $validated = $request->validate([
             'name_kh' => ['required', 'string', 'max:255'],
-            'name_en' => ['required', 'string', 'max:255'],
+
             'slug' => [
                 'nullable',
                 'string',
@@ -108,7 +112,12 @@ class AdminTestTakingStaffDocumentRequirementController extends Controller
             'is_active' => ['required', 'boolean'],
         ]);
 
-        $validated['slug'] = Str::slug($validated['slug'] ?: $validated['name_en']);
+        $validated['name_en'] = $validated['name_kh'];
+        $validated['slug'] = Str::slug(($validated['slug'] ?? null) ?: $validated['name_kh']);
+        
+        if (empty($validated['slug'])) {
+            $validated['slug'] = 'tt-doc-' . Str::lower(Str::random(8));
+        }
 
         return $validated;
     }

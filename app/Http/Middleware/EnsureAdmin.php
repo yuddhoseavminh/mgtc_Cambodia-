@@ -82,6 +82,7 @@ class EnsureAdmin
                 'ranks' => 'ranks.read',
                 'levels' => 'levels.read',
                 'design-template' => 'design-template.read',
+                'staff-team-template' => 'design-template.read',
                 'course-template' => 'course-template.read',
                 'staff-team' => 'staff-team.read',
                 'staff-management' => 'staff-management.read',
@@ -117,6 +118,10 @@ class EnsureAdmin
 
         if (str_starts_with($routeName, 'admin.users.')) {
             return 'users.' . $action;
+        }
+
+        if (str_starts_with($routeName, 'admin.items.')) {
+            return 'items.' . $action;
         }
 
         if (str_starts_with($routeName, 'admin.applications.')) {

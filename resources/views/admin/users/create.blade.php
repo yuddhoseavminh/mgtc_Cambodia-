@@ -4,7 +4,7 @@
     @php
         $permissionModules = [
             ['key' => 'dashboard', 'label' => 'ផ្ទាំងគ្រប់គ្រង'],
-            ['key' => 'reports', 'label' => 'របាយការណ៍'],
+            // ['key' => 'reports', 'label' => 'របាយការណ៍'],
             ['key' => 'applications', 'label' => 'ពាក្យស្នើសុំ'],
             ['key' => 'documents', 'label' => 'ឯកសារ'],
             ['key' => 'courses', 'label' => 'វគ្គសិក្សា'],
@@ -14,7 +14,7 @@
             ['key' => 'course-template', 'label' => 'គំរូវគ្គសិក្សា'],
             ['key' => 'staff-team', 'label' => 'បុគ្គលិកក្រុម'],
             ['key' => 'staff-management', 'label' => 'គ្រប់គ្រងបុគ្គលិក'],
-            ['key' => 'staff-team-documents', 'label' => 'ឯកសារបុគ្គលិកក្រុម'],
+            ['key' => 'staff-team-documents', 'label' => 'ឯកសារបុគ្គលិកក្រុមការងារទី៣'],
             ['key' => 'staff-team-ranks', 'label' => 'ឋានន្តរសក្តិបុគ្គលិកក្រុម'],
             ['key' => 'test-taking-staff', 'label' => 'បុគ្គលិកសាកល្បង'],
             ['key' => 'test-taking-staff-template', 'label' => 'គំរូបុគ្គលិកសាកល្បង'],

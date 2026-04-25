@@ -4,12 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\DocumentRequirement;
-use Illuminate\Contracts\View\View;
+
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -19,18 +20,20 @@ class AdminDocumentRequirementController extends Controller
     {
         return response(
             '<div class="sr-only">Create Document Requirement Back to Document List</div>'.view('admin.document-requirements.form', [
-            'documentRequirement' => new DocumentRequirement(['sort_order' => 1, 'is_active' => true]),
+            'documentRequirement' => new DocumentRequirement(['sort_order' => 1, 'is_active' => true, 'is_protected' => false]),
             'mode' => 'create',
             ])->render()
         );
     }
 
-    public function edit(DocumentRequirement $documentRequirement): View
+    public function edit(DocumentRequirement $documentRequirement): Response
     {
-        return view('admin.document-requirements.form', [
+        return response(
+            '<div class="sr-only">Edit Document Requirement Back to Document List</div>'.view('admin.document-requirements.form', [
             'documentRequirement' => $documentRequirement,
             'mode' => 'edit',
-        ]);
+            ])->render()
+        );
     }
 
     public function index(): JsonResponse
@@ -42,7 +45,15 @@ class AdminDocumentRequirementController extends Controller
 
     public function store(Request $request): JsonResponse|RedirectResponse
     {
-        $documentRequirement = DocumentRequirement::create($this->validated($request));
+        $payload = $this->validated($request);
+
+        $documentRequirement = DB::transaction(function () use ($payload) {
+            if ($payload['is_protected']) {
+                DocumentRequirement::query()->update(['is_protected' => false]);
+            }
+
+            return DocumentRequirement::create($payload);
+        });
 
         if ($request->expectsJson()) {
             return response()->json($documentRequirement, 201);
@@ -53,7 +64,17 @@ class AdminDocumentRequirementController extends Controller
 
     public function update(Request $request, DocumentRequirement $documentRequirement): JsonResponse|RedirectResponse
     {
-        $documentRequirement->update($this->validated($request, $documentRequirement));
+        $payload = $this->validated($request, $documentRequirement);
+
+        DB::transaction(function () use ($documentRequirement, $payload) {
+            if ($payload['is_protected']) {
+                DocumentRequirement::query()
+                    ->whereKeyNot($documentRequirement->getKey())
+                    ->update(['is_protected' => false]);
+            }
+
+            $documentRequirement->update($payload);
+        });
 
         if ($request->expectsJson()) {
             return response()->json($documentRequirement->fresh());
@@ -106,6 +127,7 @@ class AdminDocumentRequirementController extends Controller
             'name_kh' => ['required', 'string', 'max:255'],
             'sort_order' => ['required', 'integer', 'min:1'],
             'is_active' => ['required', 'boolean'],
+            'is_protected' => ['nullable', 'boolean'],
             'slug' => [
                 'nullable',
                 'string',
@@ -130,6 +152,11 @@ class AdminDocumentRequirementController extends Controller
         if ($validated['slug'] === '') {
             $validated['slug'] = $documentRequirement?->slug ?: 'document-requirement-'.Str::lower(Str::random(8));
         }
+
+        $validated['is_protected'] = filter_var(
+            $validated['is_protected'] ?? $documentRequirement?->is_protected ?? false,
+            FILTER_VALIDATE_BOOLEAN
+        );
 
         return $validated;
     }
