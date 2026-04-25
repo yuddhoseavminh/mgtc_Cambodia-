@@ -26,3 +26,7 @@ Thumbs.db
 # Docker – ignore override files but track main compose & docker/ directory
 docker-compose.override.yml
 .docker/
+
+# Large files
+*.zip
+.github.zip
