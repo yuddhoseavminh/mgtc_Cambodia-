@@ -39,13 +39,22 @@ RUN apk add --no-cache \
         nginx \
         supervisor \
         mysql-client \
+        freetype \
+        libjpeg-turbo \
+        libpng \
+        libwebp \
+        libzip \
+        oniguruma \
+        zip \
+        unzip \
+    && apk add --no-cache --virtual .build-deps \
+        $PHPIZE_DEPS \
         libpng-dev \
         libjpeg-turbo-dev \
         libwebp-dev \
         freetype-dev \
         libzip-dev \
-        zip \
-        unzip \
+        oniguruma-dev \
     && docker-php-ext-configure gd \
         --with-freetype \
         --with-jpeg \
@@ -58,7 +67,8 @@ RUN apk add --no-cache \
         bcmath \
         gd \
         zip \
-        opcache
+        opcache \
+    && apk del .build-deps
 
 # ---------- PHP configuration ----------
 COPY docker/php/php.ini   /usr/local/etc/php/conf.d/custom.ini
