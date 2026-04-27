@@ -55,7 +55,7 @@
         @endif
 
         <section class="public-form-shell">
-            <form method="POST" action="{{ route('applications.store') }}" enctype="multipart/form-data" class="space-y-5 sm:space-y-6" data-registration-form data-max-upload-total="41943040" data-submit-loading-text="សូមចាំបន្តិច....">
+            <form method="POST" action="{{ route('applications.store') }}" enctype="multipart/form-data" class="space-y-5 sm:space-y-6" data-registration-form data-max-upload-total="41943040" data-max-upload-total-mobile="10485760" data-submit-loading-text="សូមចាំបន្តិច....">
                 @csrf
 
                 <div class="public-section-card space-y-4">
@@ -347,7 +347,15 @@
 
                                         <div class="{{ $selectedStatus === 'have' ? '' : 'hidden' }}" data-document-file-wrapper>
                                             <label class="form-label">Upload File(s)</label>
-                                            <input type="file" name="document_files[{{ $documentRequirement->id }}][]" class="public-file-input block w-full" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple>
+                                            <div class="space-y-3" data-document-file-list>
+                                                <div class="flex flex-col gap-2 sm:flex-row sm:items-start" data-document-file-row>
+                                                    <input type="file" name="document_files[{{ $documentRequirement->id }}][]" class="public-file-input block w-full min-w-0 flex-1" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.webp" multiple data-document-file-input>
+                                                    <button type="button" class="hidden rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50" data-document-remove-file>Remove</button>
+                                                </div>
+                                            </div>
+                                            <button type="button" class="mt-3 inline-flex items-center rounded-xl border border-[#356AE6]/30 bg-[#356AE6]/5 px-4 py-2 text-sm font-semibold text-[#356AE6] transition hover:bg-[#356AE6]/10" data-document-add-file>
+                                                + Add another file
+                                            </button>
                                             <p class="mt-2 text-sm text-slate-500">អ្នកអាចផ្ទុកឯកសារច្រើនសន្លឹកបាន។ ទំហំមិនត្រូវលើសពី 50 MB ក្នុងមួយហ្វាល់។</p>
                                             @include('partials.field-error', ['name' => "document_files.{$documentRequirement->id}"])
                                             @include('partials.field-error', ['name' => "document_files.{$documentRequirement->id}.*"])
@@ -377,6 +385,12 @@
 
         if (registrationForm && uploadAlert) {
             const maxUploadTotal = Number(registrationForm.dataset.maxUploadTotal || 0);
+            const maxUploadTotalMobile = Number(registrationForm.dataset.maxUploadTotalMobile || 0);
+            const mobileMediaQuery = window.matchMedia ? window.matchMedia('(max-width: 767.98px)') : null;
+            const resolveMaxUploadTotal = () => {
+                const isMobileViewport = mobileMediaQuery ? mobileMediaQuery.matches : window.innerWidth < 768;
+                return isMobileViewport && maxUploadTotalMobile > 0 ? maxUploadTotalMobile : maxUploadTotal;
+            };
 
             const formatMegabytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
             const getSelectedUploadBytes = () => Array.from(
@@ -385,12 +399,13 @@
 
             const syncUploadAlert = () => {
                 const totalBytes = getSelectedUploadBytes();
-                const isTooLarge = maxUploadTotal > 0 && totalBytes > maxUploadTotal;
+                const resolvedMaxUploadTotal = resolveMaxUploadTotal();
+                const isTooLarge = resolvedMaxUploadTotal > 0 && totalBytes > resolvedMaxUploadTotal;
 
                 uploadAlert.classList.toggle('hidden', !isTooLarge);
 
                 if (isTooLarge) {
-                    uploadAlert.textContent = `ទំហំឯកសារសរុបធំពេក។ សូមកាត់បន្ថយឯកសារឱ្យនៅក្រោម 100 MB ហើយឯកសារនីមួយៗត្រូវតិចជាង 50 MB។ (Current total: ${formatMegabytes(totalBytes)})`;
+                    uploadAlert.textContent = `Total upload is too large. Keep it below ${formatMegabytes(resolvedMaxUploadTotal)}. (Current total: ${formatMegabytes(totalBytes)})`;
                 } else {
                     uploadAlert.textContent = '';
                 }
@@ -398,9 +413,14 @@
                 return isTooLarge;
             };
 
-            registrationForm.querySelectorAll('input[type="file"]').forEach((input) => {
-                input.addEventListener('change', syncUploadAlert);
+            registrationForm.addEventListener('change', (event) => {
+                const target = event.target;
+
+                if (target instanceof HTMLInputElement && target.type === 'file') {
+                    syncUploadAlert();
+                }
             });
+            registrationForm.addEventListener('registration-files-changed', syncUploadAlert);
 
             registrationForm.addEventListener('submit', (event) => {
                 if (syncUploadAlert()) {
@@ -412,23 +432,124 @@
             registrationForm.addEventListener('reset', () => {
                 window.setTimeout(syncUploadAlert, 0);
             });
+
+            mobileMediaQuery?.addEventListener?.('change', syncUploadAlert);
         }
 
         document.querySelectorAll('[data-document-card]').forEach((card) => {
             const select = card.querySelector('[data-document-status]');
             const fileWrapper = card.querySelector('[data-document-file-wrapper]');
+            const fileList = card.querySelector('[data-document-file-list]');
+            const addFileButton = card.querySelector('[data-document-add-file]');
 
             if (!select || !fileWrapper) {
                 return;
             }
 
+            const notifyFilesChanged = () => {
+                registrationForm?.dispatchEvent(new Event('registration-files-changed'));
+            };
+
+            const updateRemoveButtons = () => {
+                if (!fileList) {
+                    return;
+                }
+
+                const rows = Array.from(fileList.querySelectorAll('[data-document-file-row]'));
+
+                rows.forEach((row) => {
+                    row.querySelector('[data-document-remove-file]')?.classList.toggle('hidden', rows.length < 2);
+                });
+            };
+
             const syncDocumentField = () => {
                 const hasDocument = select.value === 'have';
                 fileWrapper.classList.toggle('hidden', !hasDocument);
+
+                if (!hasDocument) {
+                    fileWrapper.querySelectorAll('input[type="file"]').forEach((input) => {
+                        input.value = '';
+                    });
+
+                    fileList?.querySelectorAll('[data-document-file-row]').forEach((row, index) => {
+                        if (index > 0) {
+                            row.remove();
+                        }
+                    });
+
+                    updateRemoveButtons();
+                    notifyFilesChanged();
+                }
             };
 
             syncDocumentField();
             select.addEventListener('change', syncDocumentField);
+
+            addFileButton?.addEventListener('click', () => {
+                if (!fileList) {
+                    return;
+                }
+
+                const sourceInput = fileList.querySelector('[data-document-file-input]');
+
+                if (!sourceInput) {
+                    return;
+                }
+
+                const row = document.createElement('div');
+                row.className = 'flex flex-col gap-2 sm:flex-row sm:items-start';
+                row.setAttribute('data-document-file-row', '');
+
+                const input = sourceInput.cloneNode(false);
+                input.value = '';
+
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50';
+                removeButton.setAttribute('data-document-remove-file', '');
+                removeButton.textContent = 'Remove';
+
+                row.append(input, removeButton);
+                fileList.append(row);
+                updateRemoveButtons();
+                input.click();
+            });
+
+            fileList?.addEventListener('click', (event) => {
+                if (!(event.target instanceof Element)) {
+                    return;
+                }
+
+                const removeButton = event.target.closest('[data-document-remove-file]');
+
+                if (!removeButton) {
+                    return;
+                }
+
+                const rows = Array.from(fileList.querySelectorAll('[data-document-file-row]'));
+
+                if (rows.length < 2) {
+                    return;
+                }
+
+                removeButton.closest('[data-document-file-row]')?.remove();
+                updateRemoveButtons();
+                notifyFilesChanged();
+            });
+
+            registrationForm?.addEventListener('reset', () => {
+                window.setTimeout(() => {
+                    fileList?.querySelectorAll('[data-document-file-row]').forEach((row, index) => {
+                        if (index > 0) {
+                            row.remove();
+                        }
+                    });
+
+                    updateRemoveButtons();
+                }, 0);
+            });
+
+            updateRemoveButtons();
         });
 
     </script>
@@ -654,8 +775,11 @@
 
                     if (response.status === 422) {
                         const errors = payload.errors || {};
+                        const firstValidationMessage = Object.values(errors)
+                            .find((messages) => Array.isArray(messages) && messages.length > 0)?.[0] || '';
                         const generalMessage = errors.upload_total?.[0]
                             || errors.submission?.[0]
+                            || firstValidationMessage
                             || payload.message
                             || '';
 

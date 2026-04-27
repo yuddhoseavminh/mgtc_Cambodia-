@@ -10,6 +10,11 @@ use RuntimeException;
 
 class UploadStorage
 {
+    /**
+     * @var array<string, true>
+     */
+    private static array $ensuredDirectories = [];
+
     public static function diskName(): string
     {
         $disk = (string) config('filesystems.uploads_disk', 'uploads');
@@ -127,11 +132,20 @@ class UploadStorage
 
     private static function ensureDirectoryExists(string $directory): void
     {
+        $disk = self::disk();
         $targetDirectory = trim($directory, '/');
+        $rootPath = str_replace('\\', '/', rtrim($disk->path(''), '/'));
+        $cacheKey = $rootPath.'|'.$targetDirectory;
+
+        if (isset(self::$ensuredDirectories[$cacheKey])) {
+            return;
+        }
+
         $absolutePath = $targetDirectory === ''
-            ? self::disk()->path('.')
-            : self::disk()->path($targetDirectory);
+            ? $disk->path('.')
+            : $disk->path($targetDirectory);
 
         File::ensureDirectoryExists($absolutePath);
+        self::$ensuredDirectories[$cacheKey] = true;
     }
 }

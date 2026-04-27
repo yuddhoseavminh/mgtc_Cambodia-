@@ -75,20 +75,20 @@
         $currentSection = 'register-staff';
     @endphp
 
-    <div class="w-full bg-slate-50/50">
+    <div class="admin-dashboard w-full bg-slate-50/50">
         <div class="dashboard-shell">
-            <div class="grid min-h-screen lg:grid-cols-[286px_minmax(0,1fr)]">
+            <div class="admin-dashboard-grid grid min-h-screen lg:grid-cols-[286px_minmax(0,1fr)]">
                 @include('admin.partials.sidebar', ['section' => $currentSection])
 
-                <main class="flex min-h-full flex-col">
+                <main class="admin-main flex min-h-full flex-col bg-transparent">
                     @include('admin.partials.topbar', [
                         'title' => 'ព័ត៌មានបេក្ខជន',
                         'subtitle' => 'ការចុះឈ្មោះបុគ្គលិកសាកល្បង',
                         'currentSection' => $currentSection,
                     ])
 
-                    <div class="flex-1 p-4 sm:p-6 lg:p-8">
-                        <div class="mx-auto w-full max-w-[1180px] space-y-7">
+                    <div class="admin-content flex-1 p-4 sm:p-6 lg:p-8">
+                        <div class="mx-auto w-full max-w-[1180px] space-y-7 2xl:max-w-[1400px]">
 
                             {{-- Breadcrumbs --}}
                             <nav class="flex flex-wrap items-center gap-2 rounded-[1.25rem] border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-500 shadow-sm backdrop-blur">
@@ -160,11 +160,11 @@
                                 </div>
                             </div>
 
-                            <div class="grid gap-8 lg:grid-cols-[1fr_360px]">
+                            <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
                                 <div class="space-y-8">
                                     {{-- Information Dossier --}}
-                                    <section class="rounded-[2.5rem] border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
-                                        <div class="mb-10 flex items-center justify-between">
+                                    <section class="rounded-[2.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-8 lg:p-10">
+                                        <div class="mb-10 flex flex-wrap items-start justify-between gap-3 sm:items-center">
                                             <div>
                                                 <h2 class="text-2xl font-bold text-slate-900 khmer-font">ព័ត៌មានអត្តសញ្ញាណ</h2>
                                                 <p class="mt-1 text-sm text-slate-500 uppercase tracking-wider font-semibold">Primary Personnel Dossier</p>
@@ -187,7 +187,7 @@
                                                                 {!! $iconPaths[$field['icon']] ?? '' !!}
                                                             </svg>
                                                         </div>
-                                                        <p class="text-lg font-bold text-slate-900 khmer-font leading-none">{{ $field['value'] ?: '-' }}</p>
+                                                        <p class="break-words text-lg font-bold text-slate-900 khmer-font leading-tight">{{ $field['value'] ?: '-' }}</p>
                                                     </div>
                                                 </div>
                                             @endforeach
@@ -195,8 +195,8 @@
                                     </section>
 
                                     {{-- Document Vault --}}
-                                    <section class="rounded-[2.5rem] border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
-                                        <div class="mb-10 flex items-center justify-between">
+                                    <section class="rounded-[2.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-8 lg:p-10">
+                                        <div class="mb-10 flex flex-wrap items-start justify-between gap-3 sm:items-center">
                                             <div>
                                                 <h2 class="text-2xl font-bold text-slate-900 khmer-font">ប័ណ្ណសារឯកសារ</h2>
                                                 <p class="mt-1 text-sm text-slate-500 uppercase tracking-wider font-semibold">Supporting Documents Vault</p>
@@ -212,9 +212,9 @@
                                                     $groupDocs = collect($registration->documents)->where('test_taking_staff_document_requirement_id', $requirement->id);
                                                     $hasDocs = $groupDocs->isNotEmpty();
                                                 @endphp
-                                                <div class="rounded-[2rem] border border-slate-100 bg-slate-50/50 p-6 transition hover:bg-slate-50 hover:border-slate-200">
-                                                    <div class="flex items-center justify-between mb-6">
-                                                        <h3 class="font-bold text-slate-900 khmer-font">{{ $requirement->name_kh }}</h3>
+                                                <div class="rounded-[2rem] border border-slate-100 bg-slate-50/50 p-4 transition hover:border-slate-200 hover:bg-slate-50 sm:p-6">
+                                                    <div class="mb-6 flex flex-wrap items-start justify-between gap-2 sm:items-center">
+                                                        <h3 class="break-words font-bold text-slate-900 khmer-font">{{ $requirement->name_kh }}</h3>
                                                         <span class="rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest {{ $hasDocs ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500' }}">
                                                             {{ $hasDocs ? $groupDocs->count() . ' Files' : 'Missing' }}
                                                         </span>
@@ -227,8 +227,8 @@
                                                                 $canPreviewInline = in_array($extension, $previewableExtensions, true);
                                                                 $previewKind = in_array($extension, $imagePreviewableExtensions, true) ? 'image' : ($extension === 'pdf' ? 'pdf' : 'other');
                                                             @endphp
-                                                            <div class="group relative flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:shadow-md">
-                                                                <div class="flex min-w-0 items-center gap-4">
+                                                            <div class="group relative flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:shadow-md sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                                                                <div class="flex w-full min-w-0 items-center gap-3 sm:gap-4">
                                                                     <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[10px] font-black text-white shadow-lg">
                                                                         {{ $extension ?: 'DOC' }}
                                                                     </div>
@@ -238,9 +238,9 @@
                                                                     </div>
                                                                 </div>
 
-                                                                <div class="flex items-center gap-2">
+                                                                <div class="flex w-full items-center justify-end gap-2 sm:w-auto">
                                                                     <button type="button"
-                                                                        class="inline-flex h-10 px-4 items-center gap-2 rounded-xl bg-slate-50 text-xs font-bold text-slate-600 transition hover:bg-blue-600 hover:text-white"
+                                                                        class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-50 px-4 text-xs font-bold text-slate-600 transition hover:bg-blue-600 hover:text-white sm:w-auto"
                                                                         data-document-preview-trigger
                                                                         data-preview-url="{{ route('test-taking-staff-registrations.documents.show', [$registration, $document]) }}"
                                                                         data-download-url="{{ route('test-taking-staff-registrations.documents.download', [$registration, $document]) }}"
@@ -251,7 +251,7 @@
                                                                         <span>មើល</span>
                                                                     </button>
                                                                     <a href="{{ route('test-taking-staff-registrations.documents.download', [$registration, $document]) }}"
-                                                                        class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-600 transition hover:bg-emerald-600 hover:text-white">
+                                                                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-600 transition hover:bg-emerald-600 hover:text-white">
                                                                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                                                     </a>
                                                                 </div>
@@ -304,7 +304,7 @@
                                     </div> -->
 
                                     {{-- Insight/Help Card --}}
-                                    <div class="rounded-[2.5rem] border border-blue-100 bg-blue-50/50 p-8 shadow-sm">
+                                    <div class="rounded-[2.5rem] border border-blue-100 bg-blue-50/50 p-5 shadow-sm sm:p-8">
                                         <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-200 mb-6">
                                             <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                                         </div>
@@ -325,25 +325,25 @@
     {{-- Enhanced Preview Modal --}}
     <div class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md" data-document-preview-modal aria-hidden="true">
         <div class="absolute inset-0" data-document-preview-close></div>
-        <div class="relative z-10 flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[3rem] bg-white shadow-2xl animate-in zoom-in-95 duration-300" data-document-preview-panel>
-            <div class="flex items-center justify-between gap-6 border-b border-slate-100 px-8 py-6">
+        <div class="relative z-10 flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 duration-300 sm:rounded-[3rem]" data-document-preview-panel>
+            <div class="flex flex-col items-start justify-between gap-4 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:gap-6 sm:px-8 sm:py-6">
                 <div class="min-w-0">
                     <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-600 mb-1">Document Inspector</p>
                     <p class="truncate text-xl font-bold text-slate-900 khmer-font" data-document-preview-name>-</p>
                 </div>
 
-                <div class="flex items-center gap-3">
-                    <a href="#" class="inline-flex h-12 items-center rounded-2xl bg-blue-600 px-8 text-sm font-bold text-white transition hover:bg-blue-700 shadow-xl shadow-blue-100" data-document-preview-download>ទាញយក</a>
-                    <button type="button" class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900" data-document-preview-close>
+                <div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
+                    <a href="#" class="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-blue-600 px-5 text-sm font-bold text-white shadow-xl shadow-blue-100 transition hover:bg-blue-700 sm:h-12 sm:w-auto sm:px-8" data-document-preview-download>ទាញយក</a>
+                    <button type="button" class="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900 sm:h-12 sm:w-12 sm:rounded-full" data-document-preview-close>
                         <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
                     </button>
                 </div>
             </div>
 
-            <div class="flex min-h-0 flex-1 flex-col bg-slate-50 p-8">
-                <div class="hidden rounded-3xl border border-amber-200 bg-white p-6 shadow-sm mb-6" data-document-preview-note>
-                    <div class="flex items-center gap-4">
-                        <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg">
+            <div class="flex min-h-0 flex-1 flex-col bg-slate-50 p-4 sm:p-8">
+                <div class="mb-6 hidden rounded-3xl border border-amber-200 bg-white p-4 shadow-sm sm:p-6" data-document-preview-note>
+                    <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg sm:h-12 sm:w-12">
                             <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         </div>
                         <p class="text-sm font-bold text-amber-900 khmer-font">

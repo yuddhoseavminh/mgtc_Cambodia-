@@ -47,13 +47,7 @@ class AdminDocumentRequirementController extends Controller
     {
         $payload = $this->validated($request);
 
-        $documentRequirement = DB::transaction(function () use ($payload) {
-            if ($payload['is_protected']) {
-                DocumentRequirement::query()->update(['is_protected' => false]);
-            }
-
-            return DocumentRequirement::create($payload);
-        });
+        $documentRequirement = DB::transaction(fn () => DocumentRequirement::create($payload));
 
         if ($request->expectsJson()) {
             return response()->json($documentRequirement, 201);
@@ -66,15 +60,7 @@ class AdminDocumentRequirementController extends Controller
     {
         $payload = $this->validated($request, $documentRequirement);
 
-        DB::transaction(function () use ($documentRequirement, $payload) {
-            if ($payload['is_protected']) {
-                DocumentRequirement::query()
-                    ->whereKeyNot($documentRequirement->getKey())
-                    ->update(['is_protected' => false]);
-            }
-
-            $documentRequirement->update($payload);
-        });
+        DB::transaction(fn () => $documentRequirement->update($payload));
 
         if ($request->expectsJson()) {
             return response()->json($documentRequirement->fresh());

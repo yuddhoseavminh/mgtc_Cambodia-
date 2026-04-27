@@ -91,7 +91,7 @@
             >
             <span>
                 <span class="block text-sm font-semibold text-slate-900">Send This Document To Telegram</span>
-                <span class="mt-1 block text-sm leading-6 text-slate-500">Only one document type should be marked. New registrations will send this file to Telegram when available.</span>
+                <span class="mt-1 block text-sm leading-6 text-slate-500">Any number of document types can be marked. New registrations will send files from all marked types to Telegram when available.</span>
             </span>
         </label>
         <p class="mt-1.5 hidden text-sm text-rose-500" data-field-error="is_protected"></p>

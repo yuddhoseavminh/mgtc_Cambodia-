@@ -1043,7 +1043,7 @@ body[data-admin-sidebar-open='true'] .admin-sidebar__panel {
 }
 
 .admin-topbar__search {
-    display: inline-flex;
+    display: none;
     align-items: center;
     gap: 0.5rem;
     min-width: min(16rem, 100%);
@@ -1053,6 +1053,12 @@ body[data-admin-sidebar-open='true'] .admin-sidebar__panel {
     padding: 0.5rem 0.85rem;
     flex-shrink: 1;
     transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+@media (min-width: 768px) {
+    .admin-topbar__search {
+        display: inline-flex !important;
+    }
 }
 
 .admin-topbar__search:focus-within {
@@ -1175,16 +1181,21 @@ body[data-admin-sidebar-open='true'] .admin-sidebar__panel {
     padding: clamp(1rem, 4vw, 2rem);
 }
 
-[data-avatar-preview-panel],
-[data-document-preview-panel] {
+[data-avatar-preview-panel] {
     width: min(100%, 62rem);
     max-height: min(90vh, 58rem);
     overflow: hidden;
 }
 
+[data-document-preview-panel] {
+    width: min(100%, 64rem);
+    max-height: min(92vh, 58rem);
+    overflow: hidden;
+}
+
 [data-document-preview-frame],
 [data-document-preview-image-wrapper] {
-    min-height: min(60vh, 34rem);
+    min-height: min(66vh, 40rem);
 }
 
 .admin-data-table td[data-table-actions] {
@@ -1344,12 +1355,24 @@ body[data-admin-sidebar-open='true'] .admin-sidebar__panel {
 
 @media (min-width: 768px) and (max-width: 1023px) {
     .admin-topbar {
+        flex-wrap: wrap;
+        align-items: flex-start;
         padding-inline: 1.25rem;
         padding-block: 1rem;
     }
 
+    .admin-topbar__leading {
+        flex-basis: 100%;
+    }
+
     .admin-topbar__action-cluster {
+        width: 100%;
         justify-content: flex-end;
+    }
+
+    .admin-topbar__search {
+        flex: 1 1 auto;
+        min-width: 0;
     }
 
     .admin-sidebar__panel {

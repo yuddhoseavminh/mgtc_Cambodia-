@@ -330,8 +330,9 @@ summary::-webkit-details-marker { display: none; }
                     <img src="{{ asset('images/logo_admin.jpg') }}" alt="Logo" style="width:100%; height:100%; object-fit:cover;">
                 </div>
                 <div class="admin-brand-copy">
-                    <p style="margin:0; font-size:13px; font-weight:700; color:#111827; line-height:1.2; letter-spacing:-.01em;">គ្រប់គ្រងវគ្គសិក្សា</p>
-                    <p class="admin-brand-subtitle" style="margin:2px 0 0; font-size:10px; font-weight:500; color:#9CA3AF; text-transform:uppercase; letter-spacing:.1em;">Admin Panel</p>
+                    <p style="margin:0; font-size:13px; font-weight:700; color:#111827; line-height:1.2; letter-spacing:-.01em;">មជ្ឈមណ្ឌលហ្វឹកហ្វឺនភូមិសាស្រ្តយោធា
+</p>
+                    <p class="admin-brand-subtitle" style="margin:2px 0 0; font-size:10px; font-weight:500; color:#9CA3AF; text-transform:uppercase; letter-spacing:.1em;">ផ្ទាំងគ្រប់គ្រង</p>
                 </div>
             </div>
 

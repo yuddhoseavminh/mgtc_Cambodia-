@@ -134,7 +134,7 @@
                                                 @csrf @method('PUT')
 
                                                 <div class="grid gap-5 md:grid-cols-2">
-                                                    <div class="col-span-2">
+                                                    <div class="md:col-span-2">
                                                         <label class="form-label khmer-font">គោត្តនាម-នាម (ខ្មែរ) <span class="text-rose-500">*</span></label>
                                                         <input type="text" name="name_kh" value="{{ old('name_kh', $registration->name_kh) }}" required
                                                             class="form-input bg-slate-50" placeholder="បញ្ចូលឈ្មោះជាភាសាខ្មែរ">
@@ -182,7 +182,7 @@
                                                         @error('submitted_at') <p class="mt-2 text-xs font-bold text-rose-500 ml-1">{{ $message }}</p> @enderror
                                                     </div>
 
-                                                    <div class="col-span-2 grid gap-5 test-taking-date-grid">
+                                                    <div class="grid gap-5 test-taking-date-grid md:col-span-2">
                                                         <div>
                                                             <label class="form-label">ថ្ងៃកំណើត</label>
                                                             <div class="relative test-taking-date-field">

@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-6 border-b border-slate-200 pb-6">
         <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div class="max-w-3xl">
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">បុគ្គលិកក្រុមការងារទី៣ទី៣</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">បុគ្គលិកក្រុមការងារទី៣</p>
                 <h3 class="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">គ្រប់គ្រងបុគ្គលិកក្រុមការងារទី៣</h3>
                 <p class="mt-3 text-sm leading-7 text-slate-500">បង្កើត មើល កែប្រែ និងគ្រប់គ្រងកំណត់ត្រាបុគ្គលិកជាមួយរូបភាព តួនាទី និងឯកសារភ្ជាប់។</p>
             </div>
@@ -134,8 +134,10 @@
                         ];
 
                         $formatKhmerDate = static function ($date) use ($khmerMonths): string {
-                            if (!$date instanceof \DateTimeInterface) return (string) ($date ?: '-');
-                            
+                            if (! ($date instanceof \DateTimeInterface)) {
+                                return (string) ($date ?: '-');
+                            }
+
                             $day = $date->format('d');
                             $month = (int) $date->format('m');
                             $year = $date->format('Y');
@@ -191,9 +193,9 @@
                             <td class="whitespace-nowrap px-6 py-5 text-slate-500" data-label="ថ្ងៃខែឆ្នាំកំណើត">{{ $formatKhmerDate($staff->dob) }}</td>
                             <td class="whitespace-nowrap px-6 py-5 text-slate-500" data-label="ថ្ងៃចូលបម្រើកងទ័ព">{{ $formatKhmerDate($staff->date_of_enlistment) }}</td>
                             <td class="whitespace-nowrap px-6 py-5 text-slate-500" data-label="ភេទ">{{ $genderMap[$staff->gender] ?? $staff->gender }}</td>
-                            <td class="whitespace-nowrap px-6 py-5 text-slate-500" data-label="តួនាទី">{{ $staff->position }}</td>
+                            <td class="whitespace-nowrap px-6 py-5 text-slate-500" data-label="មុខតំណែង">{{ $staff->position }}</td>
                             <td class="whitespace-nowrap px-6 py-5 text-sm font-medium text-slate-600" data-label="លេខទូរស័ព្ទ">{{ $staff->phone_number }}</td>
-                            <td class="whitespace-nowrap px-6 py-5" data-label="សិទ្ធិ">
+                            <td class="whitespace-nowrap px-6 py-5" data-label="តួនាទី">
                                 <span class="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide {{ $roleBadgeClass }}">{{ $staff->role }}</span>
                             </td>
                             <td class="whitespace-nowrap px-6 py-5 text-right" data-label="សកម្មភាព" data-table-actions>

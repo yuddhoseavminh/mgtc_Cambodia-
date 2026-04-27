@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendApplicationTelegramNotification;
 use App\Models\Application;
 use App\Models\ApplicationDocument;
 use App\Models\DocumentRequirement;
@@ -15,6 +16,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -22,6 +24,7 @@ use Illuminate\Validation\ValidationException;
 class PublicApplicationController extends Controller
 {
     private const MAX_TOTAL_UPLOAD_BYTES = 104857600;
+    private const MOBILE_MAX_TOTAL_UPLOAD_BYTES = 10485760;
 
     public function store(Request $request): JsonResponse|RedirectResponse
     {
@@ -66,7 +69,7 @@ class PublicApplicationController extends Controller
                 'array',
                 'min:1',
             ];
-            $rules["{$fileKey}.*"] = ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:51200'];
+            $rules["{$fileKey}.*"] = ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx,webp', 'max:51200'];
         }
 
         $validator = validator($payload, $rules);
@@ -85,9 +88,11 @@ class PublicApplicationController extends Controller
         $validated = $validator->validate();
         $validated['rank_name'] = trim((string) ($validated['rank_name'] ?? ''));
         $validated['rank_id'] = $this->resolveRankId($validated);
+        $aggregateUploadLimit = $this->resolveAggregateUploadLimit($request);
         $this->ensureAggregateUploadLimit(
             $request->file('document_files', []),
-            'ទំហំឯកសារសរុបធំពេក។ សូមរក្សាទំហំឯកសារនីមួយៗក្រោម 20 MB និងទំហំសរុបក្រោម 40 MB។',
+            'Total upload size is too large. Please reduce the total upload size and try again.',
+            $aggregateUploadLimit,
         );
 
         $folder = 'applications/'.Str::uuid();
@@ -133,7 +138,7 @@ class PublicApplicationController extends Controller
             return $application;
         });
 
-        $this->sendTelegramRegistrationNotification($application);
+        $this->queueTelegramRegistrationNotification($application);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -172,7 +177,24 @@ class PublicApplicationController extends Controller
         ];
     }
 
-    private function sendTelegramRegistrationNotification(Application $application): void
+    private function queueTelegramRegistrationNotification(Application $application): void
+    {
+        if (! $this->telegramNotificationsEnabled()) {
+            return;
+        }
+
+        try {
+            $pendingDispatch = SendApplicationTelegramNotification::dispatch($application)->afterResponse();
+            unset($pendingDispatch);
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to queue Telegram registration notification.', [
+                'application_id' => $application->id,
+                'message' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    public function sendTelegramRegistrationNotification(Application $application): void
     {
         if (! $this->telegramNotificationsEnabled()) {
             return;
@@ -212,6 +234,7 @@ class PublicApplicationController extends Controller
         } catch (\Throwable $exception) {
             $sslRetryPrimary = null;
             $sslRetryFallback = null;
+            $exceptionTextFallback = null;
 
             if ($this->isTelegramSslException($exception)) {
                 try {
@@ -237,6 +260,29 @@ class PublicApplicationController extends Controller
                 }
             }
 
+            try {
+                $exceptionTextFallback = $this->sendTelegramTextMessage(
+                    $chatId,
+                    $botToken,
+                    $message,
+                    $this->isTelegramSslException($exception)
+                );
+
+                if ($exceptionTextFallback->successful()) {
+                    Log::warning('Telegram registration media notification failed, but text fallback succeeded.', [
+                        'application_id' => $application->id,
+                        'message' => $exception->getMessage(),
+                    ]);
+
+                    return;
+                }
+            } catch (\Throwable $fallbackException) {
+                Log::warning('Telegram registration exception text fallback threw an exception.', [
+                    'application_id' => $application->id,
+                    'message' => $fallbackException->getMessage(),
+                ]);
+            }
+
             Log::warning('Telegram registration notification threw an exception.', [
                 'application_id' => $application->id,
                 'message' => $exception->getMessage(),
@@ -244,6 +290,8 @@ class PublicApplicationController extends Controller
                 'ssl_retry_response' => $sslRetryPrimary?->body(),
                 'ssl_retry_fallback_status' => $sslRetryFallback?->status(),
                 'ssl_retry_fallback_response' => $sslRetryFallback?->body(),
+                'exception_text_fallback_status' => $exceptionTextFallback?->status(),
+                'exception_text_fallback_response' => $exceptionTextFallback?->body(),
             ]);
         }
     }
@@ -258,21 +306,66 @@ class PublicApplicationController extends Controller
         string $message,
         bool $forceWithoutVerifying = false
     ): array {
-        $preferredDocument = $this->preferredRegistrationDocument($application);
+        if (! $this->telegramAttachmentsEnabled()) {
+            return [
+                'primary' => $this->sendTelegramTextMessage($chatId, $botToken, $message, $forceWithoutVerifying),
+                'fallback' => null,
+            ];
+        }
 
-        $primaryResponse = $preferredDocument
-            ? $this->sendTelegramRegistrationMedia($application, $preferredDocument, $chatId, $botToken, $message, $forceWithoutVerifying)
-            : $this->sendTelegramTextMessage($chatId, $botToken, $message, $forceWithoutVerifying);
+        $preferredDocuments = $this->preferredRegistrationDocuments($application);
+
+        if ($preferredDocuments->isNotEmpty()) {
+            return $this->sendTelegramRegistrationMediaDocuments(
+                $application,
+                $preferredDocuments,
+                $chatId,
+                $botToken,
+                $message,
+                $forceWithoutVerifying
+            );
+        }
+
+        $primaryResponse = $this->sendTelegramTextMessage($chatId, $botToken, $message, $forceWithoutVerifying);
 
         if ($primaryResponse->successful()) {
             return ['primary' => $primaryResponse, 'fallback' => null];
         }
 
-        $fallbackResponse = $preferredDocument
-            ? $this->sendTelegramTextMessage($chatId, $botToken, $message, $forceWithoutVerifying)
-            : $this->sendTelegramFallbackDocument($application, $chatId, $botToken, $message, $forceWithoutVerifying);
+        $fallbackResponse = $this->sendTelegramFallbackDocument($application, $chatId, $botToken, $message, $forceWithoutVerifying);
 
         return ['primary' => $primaryResponse, 'fallback' => $fallbackResponse];
+    }
+
+    /**
+     * @param  Collection<int, ApplicationDocument>  $documents
+     * @return array{primary: HttpResponse|null, fallback: HttpResponse|null}
+     */
+    private function sendTelegramRegistrationMediaDocuments(
+        Application $application,
+        Collection $documents,
+        string $chatId,
+        string $botToken,
+        string $message,
+        bool $forceWithoutVerifying = false
+    ): array {
+        $primaryResponse = $this->sendTelegramRegistrationMediaGroup(
+            $application,
+            $documents,
+            $chatId,
+            $botToken,
+            $message,
+            $forceWithoutVerifying
+        );
+
+        if ($primaryResponse?->successful()) {
+            return ['primary' => $primaryResponse, 'fallback' => null];
+        }
+
+        return [
+            'primary' => $primaryResponse,
+            'fallback' => $this->sendTelegramTextMessage($chatId, $botToken, $message, $forceWithoutVerifying),
+        ];
     }
 
     private function buildTelegramRegistrationMessage(Application $application): string
@@ -303,11 +396,37 @@ class PublicApplicationController extends Controller
 
     private function preferredRegistrationDocument(Application $application): ?ApplicationDocument
     {
-        return $application->applicationDocuments
+        return $this->preferredRegistrationDocuments($application)->first();
+    }
+
+    /**
+     * @return Collection<int, ApplicationDocument>
+     */
+    private function preferredRegistrationDocuments(Application $application): Collection
+    {
+        $documents = $application->applicationDocuments
             ->filter(fn (ApplicationDocument $document) => $document->status === ApplicationDocument::STATUS_HAVE
                 && filled($document->file_path)
                 && $document->documentRequirement
-                && UploadStorage::exists($document->file_path))
+                && UploadStorage::exists($document->file_path));
+
+        $telegramDocuments = $documents
+            ->filter(fn (ApplicationDocument $document) => $document->documentRequirement?->isProtectedRequirement());
+
+        if ($telegramDocuments->isNotEmpty()) {
+            return $this->sortRegistrationDocuments($telegramDocuments);
+        }
+
+        return $this->sortRegistrationDocuments($documents)->take(1)->values();
+    }
+
+    /**
+     * @param  Collection<int, ApplicationDocument>  $documents
+     * @return Collection<int, ApplicationDocument>
+     */
+    private function sortRegistrationDocuments(Collection $documents): Collection
+    {
+        return $documents
             ->sort(function (ApplicationDocument $left, ApplicationDocument $right) {
                 $leftProtected = $left->documentRequirement?->isProtectedRequirement() ? 0 : 1;
                 $rightProtected = $right->documentRequirement?->isProtectedRequirement() ? 0 : 1;
@@ -325,7 +444,7 @@ class PublicApplicationController extends Controller
 
                 return (int) $left->id <=> (int) $right->id;
             })
-            ->first();
+            ->values();
     }
 
     private function sendTelegramRegistrationMedia(
@@ -360,14 +479,116 @@ class PublicApplicationController extends Controller
                 ->attach('document', $resource, $filename)
                 ->post(
                     "https://api.telegram.org/bot{$botToken}/sendDocument",
-                    [
+                    $this->telegramPayload([
                         'chat_id' => $chatId,
                         'caption' => Str::limit($message, 900, '...'),
-                    ]
+                    ])
                 );
         } finally {
             fclose($resource);
         }
+    }
+
+    /**
+     * @param  Collection<int, ApplicationDocument>  $documents
+     */
+    private function sendTelegramRegistrationMediaGroup(
+        Application $application,
+        Collection $documents,
+        string $chatId,
+        string $botToken,
+        string $message,
+        bool $forceWithoutVerifying = false
+    ): ?HttpResponse {
+        $documents = $documents->values();
+
+        if ($documents->isEmpty()) {
+            return null;
+        }
+
+        if ($documents->count() === 1) {
+            return $this->sendTelegramRegistrationMedia(
+                $application,
+                $documents->first(),
+                $chatId,
+                $botToken,
+                $message,
+                $forceWithoutVerifying
+            );
+        }
+
+        $lastResponse = null;
+        $captionPending = true;
+        $caption = Str::limit($message, 900, '...');
+
+        foreach ($documents->chunk(10) as $chunk) {
+            $request = $this->telegramRequest($forceWithoutVerifying);
+            $media = [];
+            $resources = [];
+            $validIndex = 0;
+
+            foreach ($chunk as $document) {
+                $path = UploadStorage::path($document->file_path);
+
+                if (! is_file($path)) {
+                    Log::warning('Telegram registration document missing on disk.', [
+                        'application_id' => $application->id,
+                        'document_id' => $document->id,
+                        'file_path' => $document->file_path,
+                    ]);
+                    continue;
+                }
+
+                $resource = fopen($path, 'r');
+
+                if ($resource === false) {
+                    continue;
+                }
+
+                $attachName = 'document_'.$validIndex;
+                $request = $request->attach($attachName, $resource, $document->original_name ?? basename($path));
+
+                $mediaItem = [
+                    'type' => 'document',
+                    'media' => 'attachment://'.$attachName,
+                ];
+
+                if ($captionPending && $validIndex === 0) {
+                    $mediaItem['caption'] = $caption;
+                    $captionPending = false;
+                }
+
+                $media[] = $mediaItem;
+                $resources[] = $resource;
+                $validIndex++;
+            }
+
+            if ($media === []) {
+                continue;
+            }
+
+            try {
+                $response = $request->post(
+                    "https://api.telegram.org/bot{$botToken}/sendMediaGroup",
+                    $this->telegramPayload([
+                        'chat_id' => $chatId,
+                        'media' => json_encode($media, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    ])
+                );
+            } finally {
+                foreach ($resources as $resource) {
+                    fclose($resource);
+                }
+            }
+
+            $lastResponse = $response;
+
+            if (! $response->successful()) {
+                return $response;
+            }
+        }
+
+        return $lastResponse;
     }
 
     private function sendTelegramTextMessage(
@@ -380,10 +601,10 @@ class PublicApplicationController extends Controller
             ->asForm()
             ->post(
                 "https://api.telegram.org/bot{$botToken}/sendMessage",
-                [
+                $this->telegramPayload([
                     'chat_id' => $chatId,
                     'text' => $message,
-                ]
+                ])
             );
     }
 
@@ -422,6 +643,11 @@ class PublicApplicationController extends Controller
     private function telegramNotificationsEnabled(): bool
     {
         return filter_var(config('services.telegram.enabled', false), FILTER_VALIDATE_BOOLEAN) === true;
+    }
+
+    private function telegramAttachmentsEnabled(): bool
+    {
+        return filter_var(config('services.telegram.send_attachments', true), FILTER_VALIDATE_BOOLEAN) === true;
     }
 
     private function buildKhmerDateLine(): string
@@ -468,13 +694,82 @@ class PublicApplicationController extends Controller
 
     private function telegramRequest(bool $forceWithoutVerifying = false)
     {
-        $request = Http::timeout(30);
+        $timeout = max(5, (int) config('services.telegram.timeout', 30));
+        $connectTimeout = max(2, (int) config('services.telegram.connect_timeout', 10));
+        $retryTimes = max(1, (int) config('services.telegram.retry_times', 3));
+        $retryDelay = max(0, (int) config('services.telegram.retry_delay_ms', 1200));
+
+        $request = Http::timeout($timeout)
+            ->connectTimeout($connectTimeout)
+            ->retry(
+                $retryTimes,
+                $retryDelay,
+                function (\Throwable $exception): bool {
+                    if ($exception instanceof \Illuminate\Http\Client\ConnectionException) {
+                        return true;
+                    }
+
+                    $message = strtolower($exception->getMessage());
+
+                    return str_contains($message, 'timed out')
+                        || str_contains($message, 'could not connect')
+                        || str_contains($message, 'connection reset')
+                        || str_contains($message, 'temporarily unavailable');
+                },
+                false
+            );
+
+        $proxy = $this->telegramProxy();
+
+        if ($proxy !== null) {
+            $request = $request->withOptions(['proxy' => $proxy]);
+        }
 
         if ($forceWithoutVerifying || ! config('services.telegram.verify_ssl', true)) {
             $request = $request->withoutVerifying();
         }
 
-        return $request;
+        return $request->acceptJson();
+    }
+
+    /**
+     * @return array{http?: string, https?: string}|string|null
+     */
+    private function telegramProxy()
+    {
+        $proxy = trim((string) config('services.telegram.proxy', ''));
+
+        if ($proxy !== '') {
+            return $proxy;
+        }
+
+        $httpProxy = trim((string) config('services.telegram.http_proxy', ''));
+        $httpsProxy = trim((string) config('services.telegram.https_proxy', ''));
+
+        $scopedProxy = array_filter(
+            [
+                'http' => $httpProxy,
+                'https' => $httpsProxy,
+            ],
+            fn (string $value) => $value !== ''
+        );
+
+        return $scopedProxy === [] ? null : $scopedProxy;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function telegramPayload(array $payload): array
+    {
+        $messageThreadId = config('services.telegram.message_thread_id');
+
+        if (filled($messageThreadId)) {
+            $payload['message_thread_id'] = (int) $messageThreadId;
+        }
+
+        return $payload;
     }
 
     /**
@@ -516,9 +811,27 @@ class PublicApplicationController extends Controller
         return ((int) Rank::query()->max('sort_order')) + 1;
     }
 
-    private function ensureAggregateUploadLimit(mixed $files, string $message): void
+    private function resolveAggregateUploadLimit(Request $request): int
     {
-        if ($this->sumUploadedFileSizes($files) <= self::MAX_TOTAL_UPLOAD_BYTES) {
+        return $this->isMobileRequest($request)
+            ? self::MOBILE_MAX_TOTAL_UPLOAD_BYTES
+            : self::MAX_TOTAL_UPLOAD_BYTES;
+    }
+
+    private function isMobileRequest(Request $request): bool
+    {
+        $userAgent = strtolower((string) $request->userAgent());
+
+        if ($userAgent === '') {
+            return false;
+        }
+
+        return (bool) preg_match('/android|iphone|ipad|ipod|iemobile|opera mini|mobile/i', $userAgent);
+    }
+
+    private function ensureAggregateUploadLimit(mixed $files, string $message, int $maxBytes): void
+    {
+        if ($this->sumUploadedFileSizes($files) <= $maxBytes) {
             return;
         }
 
@@ -540,3 +853,4 @@ class PublicApplicationController extends Controller
         return 0;
     }
 }
+

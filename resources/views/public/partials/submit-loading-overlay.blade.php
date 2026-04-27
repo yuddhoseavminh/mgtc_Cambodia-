@@ -43,6 +43,32 @@
         animation: public-submit-loading-spin 0.8s linear infinite;
     }
 
+    .public-submit-loading-progress {
+        margin-top: 1.25rem;
+    }
+
+    .public-submit-loading-progress-track {
+        height: 0.55rem;
+        overflow: hidden;
+        border-radius: 9999px;
+        background: #dbeafe;
+    }
+
+    .public-submit-loading-progress-bar {
+        height: 100%;
+        width: 0%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #2563eb, #16a34a);
+        transition: width 180ms ease;
+    }
+
+    .public-submit-loading-progress-text {
+        margin-top: 0.65rem;
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 700;
+    }
+
     @keyframes public-submit-loading-spin {
         to {
             transform: rotate(360deg);
@@ -66,5 +92,11 @@
     <div class="public-submit-loading-card" role="status" aria-live="polite" aria-busy="true">
         <p class="public-submit-loading-title" data-submit-loading-message>សូមចាំបន្តិច....</p>
         <div class="public-submit-loading-spinner" aria-hidden="true"></div>
+        <div class="public-submit-loading-progress hidden" data-submit-upload-progress>
+            <div class="public-submit-loading-progress-track">
+                <div class="public-submit-loading-progress-bar" data-submit-upload-progress-bar></div>
+            </div>
+            <p class="public-submit-loading-progress-text" data-submit-upload-progress-text>0%</p>
+        </div>
     </div>
 </div>

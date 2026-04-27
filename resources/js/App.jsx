@@ -63,7 +63,7 @@ import UploadFileRoundedIcon from '@mui/icons-material/UploadFileRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 import ViewModuleRoundedIcon from '@mui/icons-material/ViewModuleRounded';
 
-const DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,.doc,.docx';
+const DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,.doc,.docx,.webp';
 const STATUS_COLORS = {
     Pending: '#b56d1a',
     Reviewed: '#3a6ea5',
@@ -219,7 +219,7 @@ function isAllowedFile(file) {
     }
 
     const extension = file.name.split('.').pop()?.toLowerCase();
-    const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
+    const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'webp'];
 
     if (!allowedExtensions.includes(extension)) {
         return 'Supported formats: PDF, JPG, PNG, DOC, DOCX.';

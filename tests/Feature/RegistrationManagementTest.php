@@ -172,7 +172,7 @@ class RegistrationManagementTest extends TestCase
         $this->assertSame(3, $application->applicationDocuments()->whereNotNull('file_path')->count());
     }
 
-    public function test_public_registration_automatically_sends_first_uploaded_document_to_telegram(): void
+    public function test_public_registration_sends_all_uploaded_documents_from_marked_types_to_telegram(): void
     {
         Storage::fake('local');
         Http::fake([
@@ -182,6 +182,7 @@ class RegistrationManagementTest extends TestCase
         Config::set('services.telegram.enabled', true);
         Config::set('services.telegram.bot_token', 'telegram-test-token');
         Config::set('services.telegram.chat_id', 'telegram-test-chat');
+        Config::set('services.telegram.message_thread_id', 12345);
 
         DocumentRequirement::query()->update(['is_protected' => false]);
 
@@ -215,16 +216,20 @@ class RegistrationManagementTest extends TestCase
                     'slug' => 'auto-telegram-document',
                     'sort_order' => 1,
                     'is_active' => true,
-                    'is_protected' => false,
+                    'is_protected' => true,
                 ]),
             ]);
         }
 
+        $documentRequirements->each(fn (DocumentRequirement $requirement) => $requirement->forceFill(['is_protected' => true])->save());
+        $documentRequirements = DocumentRequirement::query()->ordered()->get();
+
         $documentStatuses = [];
         $documentFiles = [];
+        $expectedTelegramDocumentCount = 0;
 
         foreach ($documentRequirements as $index => $documentRequirement) {
-            $documentStatuses[$documentRequirement->id] = $index === 0 ? 'have' : 'dont_have';
+            $documentStatuses[$documentRequirement->id] = 'have';
 
             if ($index === 0) {
                 $documentFiles[$documentRequirement->id] = [
@@ -233,8 +238,25 @@ class RegistrationManagementTest extends TestCase
                         100,
                         'application/pdf',
                     ),
+                    UploadedFile::fake()->create(
+                        $documentRequirement->slug.'-extra.pdf',
+                        120,
+                        'application/pdf',
+                    ),
                 ];
+
+                $expectedTelegramDocumentCount += 2;
+                continue;
             }
+
+            $documentFiles[$documentRequirement->id] = [
+                UploadedFile::fake()->create(
+                    $documentRequirement->slug.'-telegram.pdf',
+                    130,
+                    'application/pdf',
+                ),
+            ];
+            $expectedTelegramDocumentCount++;
         }
 
         $response = $this
@@ -262,12 +284,33 @@ class RegistrationManagementTest extends TestCase
 
         $response->assertCreated();
 
-        Http::assertSent(function ($request) {
-            return str_contains($request->url(), '/sendDocument');
+        Http::assertSentCount(1);
+        Http::assertSent(function ($request) use ($expectedTelegramDocumentCount) {
+            $data = $request->data();
+            $mediaJson = isset($data['media']) && is_string($data['media'])
+                ? $data['media']
+                : null;
+
+            if (! $mediaJson) {
+                $mediaPart = collect($data)->first(fn ($part) => ($part['name'] ?? null) === 'media');
+                $mediaJson = is_array($mediaPart) ? ($mediaPart['contents'] ?? null) : null;
+            }
+
+            $mediaPayload = is_string($mediaJson) ? json_decode($mediaJson, true) : null;
+
+            return str_contains($request->url(), '/sendMediaGroup')
+                && is_array($mediaPayload)
+                && count($mediaPayload) === $expectedTelegramDocumentCount
+                && (($mediaPayload[0]['type'] ?? null) === 'document')
+                && (
+                    (isset($data['message_thread_id']) && (int) $data['message_thread_id'] === 12345)
+                    || collect($data)->contains(fn ($part) => ($part['name'] ?? null) === 'message_thread_id'
+                        && (int) ($part['contents'] ?? 0) === 12345)
+                );
         });
     }
 
-    public function test_test_taking_staff_registration_does_not_send_telegram_even_when_enabled(): void
+    public function test_test_taking_staff_registration_sends_uploaded_files_to_telegram_with_caption(): void
     {
         Storage::fake('local');
         Http::fake([
@@ -277,6 +320,7 @@ class RegistrationManagementTest extends TestCase
         Config::set('services.telegram.enabled', true);
         Config::set('services.telegram.bot_token', 'telegram-test-token');
         Config::set('services.telegram.chat_id', 'telegram-test-chat');
+        Config::set('services.telegram.message_thread_id', 12345);
 
         $rank = TestTakingStaffRank::query()->create([
             'name_kh' => 'Test Staff Rank KH',
@@ -313,7 +357,30 @@ class RegistrationManagementTest extends TestCase
             ]);
 
         $response->assertCreated();
-        Http::assertNothingSent();
+        Http::assertSentCount(1);
+        Http::assertSent(function ($request) {
+            $data = $request->data();
+            $mediaJson = isset($data['media']) && is_string($data['media'])
+                ? $data['media']
+                : null;
+
+            if (! $mediaJson) {
+                $mediaPart = collect($data)->first(fn ($part) => ($part['name'] ?? null) === 'media');
+                $mediaJson = is_array($mediaPart) ? ($mediaPart['contents'] ?? null) : null;
+            }
+
+            $mediaPayload = is_string($mediaJson) ? json_decode($mediaJson, true) : null;
+
+            return str_contains($request->url(), '/sendMediaGroup')
+                && is_array($mediaPayload)
+                && count($mediaPayload) === 2
+                && (($mediaPayload[0]['caption'] ?? null) !== null)
+                && (
+                    (isset($data['message_thread_id']) && (int) $data['message_thread_id'] === 12345)
+                    || collect($data)->contains(fn ($part) => ($part['name'] ?? null) === 'message_thread_id'
+                        && (int) ($part['contents'] ?? 0) === 12345)
+                );
+        });
     }
 
     public function test_test_taking_staff_registration_returns_success_page_without_redirect(): void
@@ -762,9 +829,10 @@ class RegistrationManagementTest extends TestCase
             ->assertSee('Back to Document List');
     }
 
-    public function test_admin_can_choose_a_single_document_requirement_for_telegram_sending(): void
+    public function test_admin_can_choose_multiple_document_requirements_for_telegram_sending(): void
     {
         $this->loginAsAdmin();
+        DocumentRequirement::query()->update(['is_protected' => false]);
 
         $currentTelegramRequirement = DocumentRequirement::query()->create([
             'name_kh' => 'Telegram Current KH',
@@ -806,7 +874,60 @@ class RegistrationManagementTest extends TestCase
 
         $this->assertDatabaseHas('document_requirements', [
             'id' => $currentTelegramRequirement->id,
+            'is_protected' => true,
+        ]);
+    }
+
+    public function test_admin_can_mark_more_than_two_document_requirements_for_telegram_sending(): void
+    {
+        $this->loginAsAdmin();
+        DocumentRequirement::query()->update(['is_protected' => false]);
+
+        DocumentRequirement::query()->create([
+            'name_kh' => 'Telegram First KH',
+            'name_en' => 'Telegram First',
+            'slug' => 'telegram-first',
+            'sort_order' => 50,
+            'is_active' => true,
+            'is_protected' => true,
+        ]);
+
+        DocumentRequirement::query()->create([
+            'name_kh' => 'Telegram Second KH',
+            'name_en' => 'Telegram Second',
+            'slug' => 'telegram-second',
+            'sort_order' => 51,
+            'is_active' => true,
+            'is_protected' => true,
+        ]);
+
+        $thirdRequirement = DocumentRequirement::query()->create([
+            'name_kh' => 'Telegram Third KH',
+            'name_en' => 'Telegram Third',
+            'slug' => 'telegram-third',
+            'sort_order' => 52,
+            'is_active' => true,
             'is_protected' => false,
+        ]);
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('X-CSRF-TOKEN', $this->csrfToken())
+            ->putJson('/admin/document-requirements/'.$thirdRequirement->id, [
+                'name_kh' => $thirdRequirement->name_kh,
+                'sort_order' => $thirdRequirement->sort_order,
+                'is_active' => true,
+                'is_protected' => true,
+                'slug' => $thirdRequirement->slug,
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('id', $thirdRequirement->id)
+            ->assertJsonPath('is_protected', true);
+
+        $this->assertDatabaseHas('document_requirements', [
+            'id' => $thirdRequirement->id,
+            'is_protected' => true,
         ]);
     }
 

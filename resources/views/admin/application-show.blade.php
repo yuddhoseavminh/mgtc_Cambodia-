@@ -226,29 +226,43 @@
         </div>
     </div>
 
-    <div class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/55 backdrop-blur-sm px-4 py-6" data-document-preview-modal aria-hidden="true">
+    <div class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-md sm:px-6" data-document-preview-modal aria-hidden="true">
         <div class="absolute inset-0" data-document-preview-close></div>
-        <div class="relative z-10 flex h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl" data-document-preview-panel>
-            <div class="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
+        <div class="relative z-10 flex h-[90vh] w-full max-w-[64rem] flex-col overflow-hidden rounded-[1.5rem] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.35)]" data-document-preview-panel role="dialog" aria-modal="true" aria-labelledby="document-preview-title">
+            <div class="flex min-h-[4.75rem] flex-col gap-4 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <div class="min-w-0">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">មើលឯកសារ</p>
-                    <p class="mt-1 truncate text-sm font-semibold text-slate-900 sm:text-base" data-document-preview-name>-</p>
+                    <p class="text-[11px] font-bold tracking-[0.24em] text-slate-400">ឯកសារ</p>
+                    <p id="document-preview-title" class="mt-1 truncate text-base font-bold text-slate-900 sm:text-lg" data-document-preview-name>-</p>
                 </div>
-                <div class="flex flex-wrap items-center gap-2">
-                    <a href="#" target="_blank" rel="noreferrer" class="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" data-document-preview-open>បើក</a>
-                    <a href="#" class="inline-flex items-center rounded-full bg-[#356AE6] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#204ec7]" data-document-preview-download>ទាញយក</a>
-                    <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700" data-document-preview-close aria-label="បិទការមើល">
-                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"></path>
-                            </svg>
+                <div class="flex shrink-0 flex-wrap items-center gap-2">
+                    <a href="#" target="_blank" rel="noreferrer" class="inline-flex h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50" data-document-preview-open>
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                            <path d="M14 3h7v7"></path>
+                            <path d="M10 14 21 3"></path>
+                            <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"></path>
+                        </svg>
+                        <span>បើក</span>
+                    </a>
+                    <a href="#" class="inline-flex h-11 items-center gap-2 rounded-full bg-[#356AE6] px-5 text-sm font-bold text-white shadow-lg shadow-blue-200 transition hover:bg-[#204ec7]" data-document-preview-download>
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <path d="M7 10l5 5 5-5"></path>
+                            <path d="M12 15V3"></path>
+                        </svg>
+                        <span>ទាញយក</span>
+                    </a>
+                    <button type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-900" data-document-preview-close aria-label="បិទការមើល">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"></path>
+                        </svg>
                     </button>
                 </div>
             </div>
-            <div class="flex min-h-0 flex-1 flex-col bg-slate-50 p-4 sm:p-5">
-                <p class="hidden rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" data-document-preview-note>
+            <div class="flex min-h-0 flex-1 flex-col bg-slate-100 p-4 sm:p-5">
+                <p class="mb-4 hidden rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800" data-document-preview-note>
                     ប្រភេទឯកសារនេះអាចមិនអាចមើលក្នុងផ្ទាំងលេចឡើងបានទេ។ សូមប្រើ បើក ឬ ទាញយក ប្រសិនបើផ្ទៃមើលនៅទទេ។
                 </p>
-                <div class="mt-4 hidden min-h-0 flex-1 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white" data-document-preview-image-wrapper>
+                <div class="hidden min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[1rem] border border-slate-300 bg-white shadow-inner" data-document-preview-image-wrapper>
                     <img
                         src=""
                         alt="ការមើលឯកសារ"
@@ -258,7 +272,7 @@
                 </div>
                 <iframe
                     src="about:blank"
-                    class="mt-4 hidden min-h-0 flex-1 w-full rounded-2xl border border-slate-200 bg-white"
+                    class="hidden min-h-0 w-full flex-1 rounded-[1rem] border border-slate-300 bg-white shadow-inner"
                     data-document-preview-frame
                     title="ការមើលឯកសារ"
                 ></iframe>
