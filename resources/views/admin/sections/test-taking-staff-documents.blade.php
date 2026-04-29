@@ -15,7 +15,7 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
-            <p class="text-sm text-slate-500">áž€áŸ†áž–áž»áž„áž•áŸ’áž‘áž»áž€...</p>
+            <p class="text-sm text-slate-500">កំពុងផ្ទុក...</p>
         </div>
         <div id="tt-doc-modal-content" class="hidden"></div>
     </div>
@@ -24,21 +24,21 @@
 <section class="dashboard-surface overflow-hidden p-6 sm:p-7">
     <div class="flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">áž€áž¶ážáž¶áž¡áž»áž€ áŸ£</p>
-            <h3 class="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">áž”áž‰áŸ’áž‡áž¸áž¯áž€ážŸáž¶ážšáž”áž»áž‚áŸ’áž‚áž›áž·áž€ážŸáž¶áž€áž›áŸ’áž”áž„</h3>
-            <p class="mt-3 max-w-2xl text-sm leading-7 text-slate-500">áž‚áŸ’ážšáž”áŸ‹áž‚áŸ’ážšáž„áž”áž‰áŸ’áž‡áž¸áž¯áž€ážŸáž¶ážšážŠáŸ‚áž›áž”áž„áŸ’áž áž¶áž‰áž›áž¾áž‘áž˜áŸ’ážšáž„áŸ‹áž…áž»áŸ‡ážˆáŸ’áž˜áŸ„áŸ‡ážŸáž¶áž’áž¶ážšážŽáŸˆážšáž”ážŸáŸ‹áž”áž»áž‚áŸ’áž‚áž›áž·áž€ážŸáž¶áž€áž›áŸ’áž”áž„áŸ”</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">កាតាឡុក ៣</p>
+            <h3 class="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">បញ្ជីឯកសារបុគ្គលិកសាកល្បង</h3>
+            <p class="mt-3 max-w-2xl text-sm leading-7 text-slate-500">គ្រប់គ្រងបញ្ជីឯកសារដែលបង្ហាញលើទម្រង់ចុះឈ្មោះសាធារណៈរបស់បុគ្គលិកសាកល្បង។</p>
         </div>
 
         <div class="flex items-center gap-3">
             <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                <span class="font-semibold text-slate-900">{{ $testTakingStaffDocumentRequirements->count() }}</span> ážáž˜áŸ’ážšáž¼ážœáž€áž¶ážšážŸážšáž»áž”
+                <span class="font-semibold text-slate-900">{{ $testTakingStaffDocumentRequirements->count() }}</span> តម្រូវការសរុប
             </div>
             <button
                 type="button"
                 data-tt-doc-modal-open="{{ route('test-taking-staff-document-requirements.create') }}"
                 class="inline-flex items-center justify-center rounded-2xl bg-[#356AE6] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(53,106,230,0.22)] transition hover:bg-[#204ec7]"
             >
-                áž”áž“áŸ’ážáŸ‚áž˜áž¯áž€ážŸáž¶ážš
+                បន្ថែមឯកសារ
             </button>
         </div>
     </div>
@@ -48,25 +48,25 @@
             <table class="admin-data-table min-w-full text-left">
                 <thead class="bg-slate-50">
                     <tr class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                        <th class="px-6 py-4">ážˆáŸ’áž˜áŸ„áŸ‡áž‡áž¶áž—áž¶ážŸáž¶ážáŸ’áž˜áŸ‚ážš</th>
+                        <th class="px-6 py-4">ឈ្មោះជាភាសាខ្មែរ</th>
 
 
-                        <th class="px-6 py-4">áž›áŸ†ážŠáž¶áž”áŸ‹</th>
-                        <th class="px-6 py-4">ážŸáŸ’ážáž¶áž“áž—áž¶áž–</th>
+                        <th class="px-6 py-4">លំដាប់</th>
+                        <th class="px-6 py-4">ស្ថានភាព</th>
                         <th class="px-6 py-4">Telegram</th>
-                        <th class="px-6 py-4 text-right">ážŸáž€áž˜áŸ’áž˜áž—áž¶áž–</th>
+                        <th class="px-6 py-4 text-right">សកម្មភាព</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($testTakingStaffDocumentRequirements as $documentRequirement)
                         <tr class="border-t border-slate-100 text-sm text-slate-700 transition hover:bg-slate-50/70">
-                            <td class="px-6 py-5 font-semibold text-slate-950" data-label="ážˆáŸ’áž˜áŸ„áŸ‡áž‡áž¶áž—áž¶ážŸáž¶ážáŸ’áž˜áŸ‚ážš" data-table-primary>{{ $documentRequirement->name_kh }}</td>
+                            <td class="px-6 py-5 font-semibold text-slate-950" data-label="ឈ្មោះជាភាសាខ្មែរ" data-table-primary>{{ $documentRequirement->name_kh }}</td>
 
 
-                            <td class="px-6 py-5 font-medium text-slate-900" data-label="áž›áŸ†ážŠáž¶áž”áŸ‹">{{ $documentRequirement->sort_order }}</td>
-                            <td class="px-6 py-5" data-label="ážŸáŸ’ážáž¶áž“áž—áž¶áž–">
+                            <td class="px-6 py-5 font-medium text-slate-900" data-label="លំដាប់">{{ $documentRequirement->sort_order }}</td>
+                            <td class="px-6 py-5" data-label="ស្ថានភាព">
                                 <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $documentRequirement->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">
-                                    {{ $documentRequirement->is_active ? 'ážŸáž€áž˜áŸ’áž˜' : 'áž˜áž·áž“ážŸáž€áž˜áŸ’áž˜' }}
+                                    {{ $documentRequirement->is_active ? 'សកម្ម' : 'មិនសកម្ម' }}
                                 </span>
                             </td>
                             <td class="px-6 py-5" data-label="Telegram">
@@ -74,20 +74,20 @@
                                     {{ $documentRequirement->send_to_telegram ? 'Send' : 'Skip' }}
                                 </span>
                             </td>
-                            <td class="px-6 py-5 whitespace-nowrap" data-label="ážŸáž€áž˜áŸ’áž˜áž—áž¶áž–" data-table-actions>
+                            <td class="px-6 py-5 whitespace-nowrap" data-label="សកម្មភាព" data-table-actions>
                                 <div class="flex items-center justify-end gap-2">
                                     <button
                                         type="button"
                                         data-tt-doc-modal-open="{{ route('test-taking-staff-document-requirements.edit', $documentRequirement) }}"
                                         class="inline-flex shrink-0 items-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                                     >
-                                        áž€áŸ‚áž”áŸ’ážšáŸ‚
+                                        កែប្រែ
                                     </button>
-                                    <form method="POST" action="{{ route('test-taking-staff-document-requirements.destroy', $documentRequirement) }}" data-swal-confirm data-swal-title="áž”áž‰áŸ’áž‡áž¶áž€áŸ‹áž€áž¶ážšáž›áž»áž”" data-swal-text="ážáž¾áž¢áŸ’áž“áž€áž–áž·ážáž‡áž¶áž…áž„áŸ‹áž›áž»áž”ážáž˜áŸ’ážšáž¼ážœáž€áž¶ážšáž¯áž€ážŸáž¶ážšáž“áŸáŸ‡áž˜áŸ‚áž“áž‘áŸ?" style="display:contents">
+                                    <form method="POST" action="{{ route('test-taking-staff-document-requirements.destroy', $documentRequirement) }}" data-swal-confirm data-swal-title="បញ្ជាក់ការលុប" data-swal-text="តើអ្នកពិតជាចង់លុបតម្រូវការឯកសារនេះមែនទេ?" style="display:contents">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="inline-flex shrink-0 items-center rounded-xl bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100">
-                                            áž›áž»áž”
+                                            លុប
                                         </button>
                                     </form>
                                 </div>
@@ -95,7 +95,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-16 text-center text-sm text-slate-500">áž˜áž·áž“áž˜áž¶áž“ážáž˜áŸ’ážšáž¼ážœáž€áž¶ážšáž¯áž€ážŸáž¶ážšáž”áž»áž‚áŸ’áž‚áž›áž·áž€ážŸáž¶áž€áž›áŸ’áž”áž„áž‘áŸáŸ”</td>
+                            <td colspan="5" class="px-6 py-16 text-center text-sm text-slate-500">មិនមានតម្រូវការឯកសារបុគ្គលិកសាកល្បងទេ។</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -141,9 +141,9 @@
                 if (window.Swal) {
                     Swal.fire({
                         icon: 'error',
-                        title: 'áž˜áž¶áž“áž”áž‰áŸ’áž áž¶',
-                        text: 'áž˜áž·áž“áž¢áž¶áž…áž•áŸ’áž‘áž»áž€áž‘áž˜áŸ’ážšáž„áŸ‹áž”áž¶áž“áž‘áŸáŸ” ážŸáž¼áž˜áž–áŸ’áž™áž¶áž™áž¶áž˜áž˜áŸ’ážáž„áž‘áŸ€ážáŸ”',
-                        confirmButtonText: 'áž”áž·áž‘',
+                        title: 'មានបញ្ហា',
+                        text: 'មិនអាចផ្ទុកទម្រង់បានទេ។ សូមព្យាយាមម្តងទៀត។',
+                        confirmButtonText: 'បិទ',
                         confirmButtonColor: '#356AE6',
                     });
                 }
