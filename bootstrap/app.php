@@ -31,7 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return redirect()
                     ->route('registration.form')
                     ->withErrors([
-                        'upload_total' => 'ទំហំឯកសារសរុបធំពេក។ សូមរក្សាទំហំឯកសារនីមួយៗក្រោម 20 MB និងទំហំសរុបក្រោម 40 MB។',
+                        'upload_total' => 'ទំហំឯកសារសរុបធំពេក។ សូមរក្សាទំហំឯកសារនីមួយៗក្រោម 15 MB និងទំហំសរុបក្រោម 50 MB។',
                     ]);
             }
 
@@ -40,7 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     ->route('test-taking-staff.form')
                     ->withInput()
                     ->withErrors([
-                        'upload_total' => 'ទំហំឯកសារសរុបធំពេក។ សូមរក្សាទំហំឯកសារនីមួយៗក្រោម 20 MB និងទំហំសរុបក្រោម 40 MB។',
+                        'upload_total' => 'ទំហំឯកសារសរុបធំពេក។ សូមរក្សាទំហំឯកសារនីមួយៗក្រោម 15 MB និងទំហំសរុបក្រោម 50 MB។',
                     ]);
             }
 

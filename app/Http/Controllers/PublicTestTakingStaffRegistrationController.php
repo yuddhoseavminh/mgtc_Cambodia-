@@ -21,12 +21,13 @@ use Illuminate\Validation\ValidationException;
 
 class PublicTestTakingStaffRegistrationController extends Controller
 {
-    private const MAX_TOTAL_UPLOAD_BYTES = 104857600;
-    private const MOBILE_MAX_TOTAL_UPLOAD_BYTES = 10485760;
+    private const MAX_TOTAL_UPLOAD_BYTES = 52428800;
+    private const MOBILE_MAX_TOTAL_UPLOAD_BYTES = 52428800;
+    private const MAX_SINGLE_FILE_UPLOAD_KILOBYTES = 15360;
     private const SUCCESS_TITLE = 'ការចុះឈ្មោះជោគជ័យ';
     private const SUCCESS_MESSAGE = 'ការចុះឈ្មោះបុគ្គលិកសាកល្បងបានជោគជ័យ។';
     private const SUCCESS_DESCRIPTION = 'ព័ត៌មានរបស់អ្នកត្រូវបានបញ្ជូនរួចរាល់។ សូមរង់ចាំការត្រួតពិនិត្យពីក្រុមការងារ។';
-    private const TOTAL_UPLOAD_ERROR = 'Total upload size is too large. Please reduce the total upload size and try again.';
+    private const TOTAL_UPLOAD_ERROR = 'Total upload size is too large. Keep each file at or below 15 MB and total uploads at or below 50 MB.';
 
     public function store(Request $request): JsonResponse|Response
     {
@@ -49,7 +50,7 @@ class PublicTestTakingStaffRegistrationController extends Controller
 
         foreach ($documentRequirements as $documentRequirement) {
             $rules["document_files.{$documentRequirement->id}"] = ['nullable', 'array'];
-            $rules["document_files.{$documentRequirement->id}.*"] = ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx,webp', 'max:51200'];
+            $rules["document_files.{$documentRequirement->id}.*"] = ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx,webp', 'max:'.self::MAX_SINGLE_FILE_UPLOAD_KILOBYTES];
         }
 
         $validated = $request->validate($rules);
@@ -215,7 +216,7 @@ class PublicTestTakingStaffRegistrationController extends Controller
 
         $registration->loadMissing([
             'rank:id,name_kh,name_en',
-            'documents.documentRequirement:id,name_kh,name_en',
+            'documents.documentRequirement:id,name_kh,name_en,send_to_telegram',
         ]);
 
         $message = $this->buildTelegramRegistrationMessage($registration);
@@ -384,7 +385,7 @@ class PublicTestTakingStaffRegistrationController extends Controller
      */
     private function preferredTelegramAttachments(TestTakingStaffRegistration $registration): Collection
     {
-        $attachments = $registration->documents
+        $attachments = $this->selectedTelegramDocuments($registration)
             ->filter(fn ($document) => filled($document->file_path) && UploadStorage::exists($document->file_path))
             ->map(fn ($document) => [
                 'path' => (string) $document->file_path,
@@ -415,9 +416,10 @@ class PublicTestTakingStaffRegistrationController extends Controller
         string $message,
         bool $forceWithoutVerifying = false
     ): HttpResponse {
-        $path = UploadStorage::path($attachment['path']);
+        $storedPath = (string) ($attachment['path'] ?? '');
+        $resource = $this->openUploadReadStream($storedPath);
 
-        if (! is_file($path)) {
+        if (! is_resource($resource)) {
             Log::warning('Telegram test-taking staff attachment missing on disk.', [
                 'registration_id' => $registration->id,
                 'file_path' => $attachment['path'],
@@ -426,12 +428,7 @@ class PublicTestTakingStaffRegistrationController extends Controller
             return $this->sendTelegramTextMessage($chatId, $botToken, $message, $forceWithoutVerifying);
         }
 
-        $resource = fopen($path, 'r');
-        $filename = $attachment['original_name'] ?: basename($path);
-
-        if ($resource === false) {
-            return $this->sendTelegramTextMessage($chatId, $botToken, $message, $forceWithoutVerifying);
-        }
+        $filename = ($attachment['original_name'] ?? null) ?: basename($storedPath);
 
         try {
             return $this->telegramRequest($forceWithoutVerifying)
@@ -521,9 +518,10 @@ class PublicTestTakingStaffRegistrationController extends Controller
             $validIndex = 0;
 
             foreach ($chunk as $attachment) {
-                $path = UploadStorage::path($attachment['path']);
+                $storedPath = (string) ($attachment['path'] ?? '');
+                $resource = $this->openUploadReadStream($storedPath);
 
-                if (! is_file($path)) {
+                if (! is_resource($resource)) {
                     Log::warning('Telegram test-taking staff attachment missing on disk.', [
                         'registration_id' => $registration->id,
                         'file_path' => $attachment['path'],
@@ -531,14 +529,8 @@ class PublicTestTakingStaffRegistrationController extends Controller
                     continue;
                 }
 
-                $resource = fopen($path, 'r');
-
-                if ($resource === false) {
-                    continue;
-                }
-
                 $attachName = 'document_'.$validIndex;
-                $request = $request->attach($attachName, $resource, $attachment['original_name'] ?: basename($path));
+                $request = $request->attach($attachName, $resource, ($attachment['original_name'] ?? null) ?: basename($storedPath));
 
                 $mediaItem = [
                     'type' => 'document',
@@ -604,24 +596,38 @@ class PublicTestTakingStaffRegistrationController extends Controller
 
     private function buildTelegramRegistrationMessage(TestTakingStaffRegistration $registration): string
     {
-        $documentLabels = $registration->documents
+        $documentLabels = $this->selectedTelegramDocuments($registration)
             ->map(fn ($document) => $document->documentRequirement?->name_kh ?: $document->original_name)
             ->filter()
             ->implode(', ');
 
         return implode("\n", [
             'ទទួលបានការចុះឈ្មោះបុគ្គលិកសាកល្បងថ្មី',
-            'លេខសម្គាល់ចុះឈ្មោះ: #'.$registration->id,
             'ឈ្មោះ (ខ្មែរ): '.$registration->name_kh,
             'ឈ្មោះ (ឡាតាំង): '.$registration->name_latin,
             'អត្តលេខ: '.($registration->id_number ?: '-'),
             'ឋានន្តរស័ក្តិ: '.($registration->rank?->name_kh ?? $registration->rank?->name_en ?? '-'),
             'លេខទូរស័ព្ទ: '.$registration->phone_number,
             'ថ្ងៃខែឆ្នាំកំណើត: '.optional($registration->date_of_birth)->format('d/m/Y'),
-            'ថ្ងៃចូលបម្រើការងារកងទ័ព: '.optional($registration->military_service_day)->format('d/m/Y'),
+            'ថ្ងៃខែឆ្នាំ ចូលទ័ព : '.optional($registration->military_service_day)->format('d/m/Y'),
             'ឯកសារភ្ជាប់: '.($documentLabels !== '' ? $documentLabels : 'គ្មាន'),
-            'បញ្ជូននៅម៉ោង: '.optional($registration->submitted_at)->timezone('Asia/Phnom_Penh')->format('d/m/Y H:i:s'),
+            'បានចុះឈ្មោះនៅម៉ោង: '.optional($registration->submitted_at)->timezone('Asia/Phnom_Penh')->format('d/m/Y h:i:s A'),
         ]);
+    }
+
+    private function selectedTelegramDocuments(TestTakingStaffRegistration $registration): Collection
+    {
+        return $registration->documents
+            ->filter(function ($document): bool {
+                $requirement = $document->documentRequirement;
+
+                if (! $requirement) {
+                    return false;
+                }
+
+                return (bool) ($requirement->send_to_telegram ?? true);
+            })
+            ->values();
     }
 
     private function telegramRequest(bool $forceWithoutVerifying = false)
@@ -744,6 +750,20 @@ class PublicTestTakingStaffRegistrationController extends Controller
         }
 
         return 0;
+    }
+
+    /**
+     * @return resource|null
+     */
+    private function openUploadReadStream(?string $path)
+    {
+        if (! filled($path) || ! UploadStorage::exists($path)) {
+            return null;
+        }
+
+        $stream = UploadStorage::readDisk($path)->readStream($path);
+
+        return is_resource($stream) ? $stream : null;
     }
 
     /**

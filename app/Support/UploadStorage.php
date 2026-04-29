@@ -132,7 +132,13 @@ class UploadStorage
 
     private static function ensureDirectoryExists(string $directory): void
     {
-        $disk = self::disk();
+        $diskName = self::diskName();
+
+        if (! self::isLocalDisk($diskName)) {
+            return;
+        }
+
+        $disk = Storage::disk($diskName);
         $targetDirectory = trim($directory, '/');
         $rootPath = str_replace('\\', '/', rtrim($disk->path(''), '/'));
         $cacheKey = $rootPath.'|'.$targetDirectory;
@@ -147,5 +153,10 @@ class UploadStorage
 
         File::ensureDirectoryExists($absolutePath);
         self::$ensuredDirectories[$cacheKey] = true;
+    }
+
+    private static function isLocalDisk(string $diskName): bool
+    {
+        return (string) config("filesystems.disks.{$diskName}.driver", 'local') === 'local';
     }
 }

@@ -14,7 +14,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StaffProfileController extends Controller
@@ -38,14 +37,15 @@ class StaffProfileController extends Controller
         ]);
     }
 
-    public function avatar(Request $request): BinaryFileResponse
+    public function avatar(Request $request): StreamedResponse
     {
         /** @var TeamStaff $staff */
         $staff = $request->user('staff');
 
         abort_unless($staff->hasStoredAvatar(), 404);
 
-        return response()->file(UploadStorage::path($staff->avatar_path));
+        return UploadStorage::readDisk($staff->avatar_path)
+            ->response($staff->avatar_path);
     }
 
     public function storeDocument(Request $request): RedirectResponse
@@ -151,12 +151,13 @@ class StaffProfileController extends Controller
         /** @var TeamStaff $staff */
         $staff = $request->user('staff');
         $document = collect($staff->documents ?? [])->values()->get($documentIndex);
+        $path = is_array($document) ? $this->documentPath($document) : null;
 
-        abort_unless($document && UploadStorage::exists($document['path'] ?? null), 404);
+        abort_unless($document && $path && UploadStorage::exists($path), 404);
 
-        return UploadStorage::readDisk($document['path'])->download(
-            $document['path'],
-            $document['original_name'] ?? basename($document['path']),
+        return UploadStorage::readDisk($path)->download(
+            $path,
+            $this->documentOriginalName($document, $path),
         );
     }
 
@@ -165,10 +166,11 @@ class StaffProfileController extends Controller
         /** @var TeamStaff $staff */
         $staff = $request->user('staff');
         $document = collect($staff->documents ?? [])->values()->get($documentIndex);
+        $path = is_array($document) ? $this->documentPath($document) : null;
 
-        abort_unless($document && UploadStorage::exists($document['path'] ?? null), 404);
+        abort_unless($document && $path && UploadStorage::exists($path), 404);
 
-        return UploadStorage::readDisk($document['path'])->response($document['path']);
+        return UploadStorage::readDisk($path)->response($path);
     }
 
     public function destroyDocument(Request $request, int $documentIndex): RedirectResponse
@@ -187,8 +189,9 @@ class StaffProfileController extends Controller
                 ->withErrors(['documents' => 'Approved documents cannot be deleted.']);
         }
 
-        if (! empty($document['path'])) {
-            UploadStorage::delete($document['path']);
+        $path = is_array($document) ? $this->documentPath($document) : null;
+        if ($path) {
+            UploadStorage::delete($path);
         }
 
         $staff->update([
@@ -225,5 +228,19 @@ class StaffProfileController extends Controller
         $completed = collect($fields)->filter(fn ($value) => filled($value))->count();
 
         return (int) round(($completed / count($fields)) * 100);
+    }
+
+    private function documentPath(array $document): ?string
+    {
+        $path = $document['path'] ?? $document['file_path'] ?? null;
+
+        return filled($path) ? (string) $path : null;
+    }
+
+    private function documentOriginalName(array $document, string $path): string
+    {
+        $originalName = $document['original_name'] ?? null;
+
+        return filled($originalName) ? (string) $originalName : basename($path);
     }
 }

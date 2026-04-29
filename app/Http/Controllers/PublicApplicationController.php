@@ -23,8 +23,10 @@ use Illuminate\Validation\ValidationException;
 
 class PublicApplicationController extends Controller
 {
-    private const MAX_TOTAL_UPLOAD_BYTES = 104857600;
-    private const MOBILE_MAX_TOTAL_UPLOAD_BYTES = 10485760;
+    private const MAX_TOTAL_UPLOAD_BYTES = 52428800;
+    private const MOBILE_MAX_TOTAL_UPLOAD_BYTES = 52428800;
+    private const MAX_SINGLE_FILE_UPLOAD_KILOBYTES = 15360;
+    private const TOTAL_UPLOAD_ERROR = 'Total upload size is too large. Keep each file at or below 15 MB and total uploads at or below 50 MB.';
 
     public function store(Request $request): JsonResponse|RedirectResponse
     {
@@ -69,7 +71,7 @@ class PublicApplicationController extends Controller
                 'array',
                 'min:1',
             ];
-            $rules["{$fileKey}.*"] = ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx,webp', 'max:51200'];
+            $rules["{$fileKey}.*"] = ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx,webp', 'max:'.self::MAX_SINGLE_FILE_UPLOAD_KILOBYTES];
         }
 
         $validator = validator($payload, $rules);
@@ -91,7 +93,7 @@ class PublicApplicationController extends Controller
         $aggregateUploadLimit = $this->resolveAggregateUploadLimit($request);
         $this->ensureAggregateUploadLimit(
             $request->file('document_files', []),
-            'Total upload size is too large. Please reduce the total upload size and try again.',
+            self::TOTAL_UPLOAD_ERROR,
             $aggregateUploadLimit,
         );
 
@@ -455,9 +457,10 @@ class PublicApplicationController extends Controller
         string $message,
         bool $forceWithoutVerifying = false
     ): HttpResponse {
-        $path = UploadStorage::path($document->file_path);
+        $storedPath = (string) $document->file_path;
+        $resource = $this->openUploadReadStream($storedPath);
 
-        if (! is_file($path)) {
+        if (! is_resource($resource)) {
             Log::warning('Telegram registration document missing on disk.', [
                 'application_id' => $application->id,
                 'document_id' => $document->id,
@@ -467,12 +470,7 @@ class PublicApplicationController extends Controller
             return $this->sendTelegramTextMessage($chatId, $botToken, $message, $forceWithoutVerifying);
         }
 
-        $resource = fopen($path, 'r');
-        $filename = $document->original_name ?? basename($path);
-
-        if ($resource === false) {
-            return $this->sendTelegramTextMessage($chatId, $botToken, $message, $forceWithoutVerifying);
-        }
+        $filename = $document->original_name ?? basename($storedPath);
 
         try {
             return $this->telegramRequest($forceWithoutVerifying)
@@ -528,9 +526,10 @@ class PublicApplicationController extends Controller
             $validIndex = 0;
 
             foreach ($chunk as $document) {
-                $path = UploadStorage::path($document->file_path);
+                $storedPath = (string) $document->file_path;
+                $resource = $this->openUploadReadStream($storedPath);
 
-                if (! is_file($path)) {
+                if (! is_resource($resource)) {
                     Log::warning('Telegram registration document missing on disk.', [
                         'application_id' => $application->id,
                         'document_id' => $document->id,
@@ -539,14 +538,8 @@ class PublicApplicationController extends Controller
                     continue;
                 }
 
-                $resource = fopen($path, 'r');
-
-                if ($resource === false) {
-                    continue;
-                }
-
                 $attachName = 'document_'.$validIndex;
-                $request = $request->attach($attachName, $resource, $document->original_name ?? basename($path));
+                $request = $request->attach($attachName, $resource, $document->original_name ?? basename($storedPath));
 
                 $mediaItem = [
                     'type' => 'document',
@@ -851,6 +844,20 @@ class PublicApplicationController extends Controller
         }
 
         return 0;
+    }
+
+    /**
+     * @return resource|null
+     */
+    private function openUploadReadStream(?string $path)
+    {
+        if (! filled($path) || ! UploadStorage::exists($path)) {
+            return null;
+        }
+
+        $stream = UploadStorage::readDisk($path)->readStream($path);
+
+        return is_resource($stream) ? $stream : null;
     }
 }
 

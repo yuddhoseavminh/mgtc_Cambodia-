@@ -55,7 +55,7 @@
         @endif
 
         <section class="public-form-shell">
-            <form method="POST" action="{{ route('applications.store') }}" enctype="multipart/form-data" class="space-y-5 sm:space-y-6" data-registration-form data-max-upload-total="41943040" data-max-upload-total-mobile="10485760" data-submit-loading-text="សូមចាំបន្តិច....">
+            <form method="POST" action="{{ route('applications.store') }}" enctype="multipart/form-data" class="space-y-5 sm:space-y-6" data-registration-form data-max-upload-total="52428800" data-max-upload-total-mobile="52428800" data-max-upload-per-file="15728640" data-submit-loading-text="សូមចាំបន្តិច....">
                 @csrf
 
                 <div class="public-section-card space-y-4">
@@ -318,7 +318,7 @@
                 <div class="public-section-card space-y-4">
                     <div class="public-section-heading">
                         <h2 class="text-xl font-semibold text-slate-950">* ឯកសារភ្ជាប់មកជាមួយ</h2>
-                        <p class="mt-1 text-sm leading-6 text-slate-500">សូមជ្រើសរើសថា មាន ឬ មិនមាន រួចបន្តផ្ទុកឯកសារ ប្រសិនបើមាន។ អ្នកអាចផ្ទុកឯកសារច្រើនសន្លឹកបាន ទំហំសរុបមិនត្រូវលើសពី 100 MB ហើយឯកសារនីមួយៗមិនលើស 50 MB។</p>
+                        <p class="mt-1 text-sm leading-6 text-slate-500">សូមជ្រើសរើសថា មាន ឬ មិនមាន រួចបន្តផ្ទុកឯកសារ ប្រសិនបើមាន។ អ្នកអាចផ្ទុកឯកសារច្រើនសន្លឹកបាន ទំហំសរុបមិនត្រូវលើសពី 50 MB ហើយឯកសារនីមួយៗមិនលើស 15 MB។</p>
                     </div>
 
                     <div class="{{ $errors->has('upload_total') || $errors->has('submission') ? '' : 'hidden' }} rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700" data-upload-total-alert>{{ $errors->first('upload_total') ?: $errors->first('submission') }}</div>
@@ -356,7 +356,7 @@
                                             <button type="button" class="mt-3 inline-flex items-center rounded-xl border border-[#356AE6]/30 bg-[#356AE6]/5 px-4 py-2 text-sm font-semibold text-[#356AE6] transition hover:bg-[#356AE6]/10" data-document-add-file>
                                                 + Add another file
                                             </button>
-                                            <p class="mt-2 text-sm text-slate-500">អ្នកអាចផ្ទុកឯកសារច្រើនសន្លឹកបាន។ ទំហំមិនត្រូវលើសពី 50 MB ក្នុងមួយហ្វាល់។</p>
+                                            <p class="mt-2 text-sm text-slate-500">អ្នកអាចផ្ទុកឯកសារច្រើនសន្លឹកបាន។ ទំហំមិនត្រូវលើសពី 15 MB ក្នុងមួយហ្វាល់។</p>
                                             @include('partials.field-error', ['name' => "document_files.{$documentRequirement->id}"])
                                             @include('partials.field-error', ['name' => "document_files.{$documentRequirement->id}.*"])
                                         </div>
@@ -386,6 +386,7 @@
         if (registrationForm && uploadAlert) {
             const maxUploadTotal = Number(registrationForm.dataset.maxUploadTotal || 0);
             const maxUploadTotalMobile = Number(registrationForm.dataset.maxUploadTotalMobile || 0);
+            const maxUploadPerFile = Number(registrationForm.dataset.maxUploadPerFile || 0);
             const mobileMediaQuery = window.matchMedia ? window.matchMedia('(max-width: 767.98px)') : null;
             const resolveMaxUploadTotal = () => {
                 const isMobileViewport = mobileMediaQuery ? mobileMediaQuery.matches : window.innerWidth < 768;
@@ -393,24 +394,33 @@
             };
 
             const formatMegabytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-            const getSelectedUploadBytes = () => Array.from(
+            const getSelectedFiles = () => Array.from(
                 registrationForm.querySelectorAll('input[type="file"]'),
-            ).reduce((total, input) => total + Array.from(input.files || []).reduce((sum, file) => sum + file.size, 0), 0);
+            ).flatMap((input) => Array.from(input.files || []));
 
             const syncUploadAlert = () => {
-                const totalBytes = getSelectedUploadBytes();
+                const selectedFiles = getSelectedFiles();
+                const totalBytes = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+                const largestFile = selectedFiles.reduce(
+                    (largest, file) => (!largest || file.size > largest.size ? file : largest),
+                    null,
+                );
                 const resolvedMaxUploadTotal = resolveMaxUploadTotal();
-                const isTooLarge = resolvedMaxUploadTotal > 0 && totalBytes > resolvedMaxUploadTotal;
+                const isSingleFileTooLarge = !!largestFile && maxUploadPerFile > 0 && largestFile.size > maxUploadPerFile;
+                const isTotalTooLarge = resolvedMaxUploadTotal > 0 && totalBytes > resolvedMaxUploadTotal;
+                const hasUploadError = isSingleFileTooLarge || isTotalTooLarge;
 
-                uploadAlert.classList.toggle('hidden', !isTooLarge);
+                uploadAlert.classList.toggle('hidden', !hasUploadError);
 
-                if (isTooLarge) {
+                if (isSingleFileTooLarge) {
+                    uploadAlert.textContent = `Each file must be ${formatMegabytes(maxUploadPerFile)} or smaller. The file "${largestFile.name}" is ${formatMegabytes(largestFile.size)}.`;
+                } else if (isTotalTooLarge) {
                     uploadAlert.textContent = `Total upload is too large. Keep it below ${formatMegabytes(resolvedMaxUploadTotal)}. (Current total: ${formatMegabytes(totalBytes)})`;
                 } else {
                     uploadAlert.textContent = '';
                 }
 
-                return isTooLarge;
+                return hasUploadError;
             };
 
             registrationForm.addEventListener('change', (event) => {
@@ -560,7 +570,7 @@
             const uploadAlert = document.querySelector('[data-upload-total-alert]');
             const registrationPage = document.querySelector('.public-page');
 
-            if (!registrationForm || !uploadAlert || !window.fetch) {
+            if (!registrationForm || !uploadAlert || !window.XMLHttpRequest) {
                 return;
             }
 
@@ -569,9 +579,132 @@
             const submitLoadingText = registrationForm.dataset.submitLoadingText || 'Submitting...';
             const loadingOverlay = document.querySelector('[data-submit-loading-overlay]');
             const loadingOverlayMessage = loadingOverlay?.querySelector('[data-submit-loading-message]');
+            const loadingProgress = loadingOverlay?.querySelector('[data-submit-upload-progress]');
+            const loadingProgressBar = loadingOverlay?.querySelector('[data-submit-upload-progress-bar]');
+            const loadingProgressText = loadingOverlay?.querySelector('[data-submit-upload-progress-text]');
             const csrfToken = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
             const fieldErrorElements = Array.from(registrationForm.querySelectorAll('[data-field-error]'));
-            let loadingOverlayTimerId = null;
+
+            const formatMegabytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+            const getSelectedUploadBytes = () => Array.from(
+                registrationForm.querySelectorAll('input[type="file"]'),
+            ).reduce((total, input) => total + Array.from(input.files || []).reduce((sum, file) => sum + file.size, 0), 0);
+            const canCompressClientImage = !!(window.File && window.FileReader && window.HTMLCanvasElement && window.URL);
+
+            const isCompressibleImage = (file) => file instanceof File
+                && file.size > 1024 * 1024
+                && /^image\/(jpe?g|png|webp)$/i.test(file.type);
+
+            const loadImageFromFile = (file) => new Promise((resolve, reject) => {
+                const objectUrl = URL.createObjectURL(file);
+                const image = new Image();
+                image.onload = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    resolve(image);
+                };
+                image.onerror = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    reject(new Error('Unable to load image.'));
+                };
+                image.src = objectUrl;
+            });
+
+            const compressImageFile = async (file, options = {}) => {
+                if (!canCompressClientImage || !isCompressibleImage(file)) {
+                    return null;
+                }
+
+                const maxDimension = Number(options.maxDimension || 1800);
+                const quality = Number(options.quality || 0.82);
+                const image = await loadImageFromFile(file);
+                const longestSide = Math.max(image.width || 0, image.height || 0) || 1;
+                const scale = Math.min(1, maxDimension / longestSide);
+                const targetWidth = Math.max(1, Math.round((image.width || 1) * scale));
+                const targetHeight = Math.max(1, Math.round((image.height || 1) * scale));
+                const canvas = document.createElement('canvas');
+
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+
+                const context = canvas.getContext('2d');
+                if (!context) {
+                    return null;
+                }
+
+                context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+                const blob = await new Promise((resolve) => {
+                    canvas.toBlob(resolve, 'image/webp', quality);
+                });
+
+                if (!(blob instanceof Blob) || blob.size >= file.size * 0.95) {
+                    return null;
+                }
+
+                const baseName = file.name.replace(/\.[^/.]+$/, '');
+                return new File([blob], `${baseName}.webp`, {
+                    type: 'image/webp',
+                    lastModified: file.lastModified,
+                });
+            };
+
+            const buildSubmissionFormData = async () => {
+                const rawFormData = new FormData(registrationForm);
+                const optimizedFormData = new FormData();
+
+                for (const [name, value] of rawFormData.entries()) {
+                    if (!isCompressibleImage(value)) {
+                        optimizedFormData.append(name, value);
+                        continue;
+                    }
+
+                    if (loadingOverlayMessage) {
+                        loadingOverlayMessage.textContent = 'កំពុងបង្រួមរូបភាព...';
+                    }
+
+                    const compressedImage = await compressImageFile(value, {
+                        maxDimension: name === 'avatar_image' ? 1440 : 1800,
+                        quality: name === 'avatar_image' ? 0.86 : 0.82,
+                    });
+
+                    optimizedFormData.append(name, compressedImage || value);
+                }
+
+                return optimizedFormData;
+            };
+
+            const setUploadProgress = (loaded, total) => {
+                if (!loadingProgress || !loadingProgressBar || !loadingProgressText) {
+                    return;
+                }
+
+                const hasTotal = Number.isFinite(total) && total > 0;
+                const percent = hasTotal ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+
+                loadingProgress.classList.remove('hidden');
+                loadingProgressBar.style.width = `${percent}%`;
+
+                if (hasTotal) {
+                    loadingProgressText.textContent = `${percent}% (${formatMegabytes(loaded)} / ${formatMegabytes(total)})`;
+                    return;
+                }
+
+                loadingProgressText.textContent = 'កំពុងផ្ទុកឯកសារ...';
+            };
+
+            const resetUploadProgress = () => {
+                if (loadingProgress) {
+                    loadingProgress.classList.add('hidden');
+                }
+
+                if (loadingProgressBar) {
+                    loadingProgressBar.style.width = '0%';
+                }
+
+                if (loadingProgressText) {
+                    loadingProgressText.textContent = '0%';
+                }
+            };
 
             const showLoadingOverlayNow = (message) => {
                 if (!loadingOverlay) {
@@ -587,27 +720,7 @@
                 document.body.classList.add('overflow-hidden');
             };
 
-            const queueLoadingOverlay = (message) => {
-                if (!loadingOverlay) {
-                    return;
-                }
-
-                if (loadingOverlayTimerId !== null) {
-                    window.clearTimeout(loadingOverlayTimerId);
-                }
-
-                loadingOverlayTimerId = window.setTimeout(() => {
-                    loadingOverlayTimerId = null;
-                    showLoadingOverlayNow(message);
-                }, 220);
-            };
-
             const hideLoadingOverlay = () => {
-                if (loadingOverlayTimerId !== null) {
-                    window.clearTimeout(loadingOverlayTimerId);
-                    loadingOverlayTimerId = null;
-                }
-
                 if (!loadingOverlay) {
                     return;
                 }
@@ -615,6 +728,7 @@
                 loadingOverlay.classList.add('hidden');
                 loadingOverlay.setAttribute('aria-hidden', 'true');
                 document.body.classList.remove('overflow-hidden');
+                resetUploadProgress();
             };
 
             const showSweetAlert = async (icon, title, text) => {
@@ -702,10 +816,56 @@
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
+            const submitWithProgress = (formData) => new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+
+                xhr.open('POST', registrationForm.action);
+                xhr.withCredentials = true;
+                xhr.setRequestHeader('Accept', 'application/json');
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+                if (csrfToken) {
+                    xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken);
+                }
+
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (!event.lengthComputable) {
+                        setUploadProgress(0, 0);
+                        return;
+                    }
+
+                    setUploadProgress(event.loaded, event.total);
+
+                    if (event.loaded >= event.total && loadingOverlayMessage) {
+                        loadingOverlayMessage.textContent = 'កំពុងរក្សាទុកឯកសារ...';
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    let payload = {};
+
+                    try {
+                        payload = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+                    } catch (error) {
+                        payload = {};
+                    }
+
+                    resolve({
+                        status: xhr.status,
+                        payload,
+                    });
+                });
+
+                xhr.addEventListener('error', reject);
+                xhr.addEventListener('abort', reject);
+                xhr.send(formData);
+            });
+
             registrationForm.addEventListener('submit', async (event) => {
                 if (event.defaultPrevented) {
                     return;
                 }
+
                 event.preventDefault();
                 
                 if (window.Swal) {
@@ -740,40 +900,27 @@
                 if (submitButton) {
                     submitButton.textContent = submitLoadingText;
                 }
-                
-                if (window.Swal) {
-                    window.Swal.fire({
-                        title: 'កំពុងដំណើរការ...',
-                        text: 'សូមរង់ចាំបន្តិច',
-                        allowOutsideClick: false,
-                        showConfirmButton: false,
-                        didOpen: () => {
-                            window.Swal.showLoading();
-                        }
-                    });
-                }
+
+                showLoadingOverlayNow('កំពុងផ្ទុកឯកសារ...');
+                setUploadProgress(0, getSelectedUploadBytes());
 
                 try {
-                    const response = await fetch(registrationForm.action, {
-                        method: 'POST',
-                        body: new FormData(registrationForm),
-                        credentials: 'same-origin',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': csrfToken,
-                        },
-                    });
+                    const formData = await buildSubmissionFormData();
 
-                    const payload = await response.json().catch(() => ({}));
+                    if (loadingOverlayMessage) {
+                        loadingOverlayMessage.textContent = 'កំពុងផ្ទុកឯកសារ...';
+                    }
 
-                    if (response.status === 201) {
+                    const { status, payload } = await submitWithProgress(formData);
+
+                    if (status === 201) {
+                        hideLoadingOverlay();
                         await showSweetAlert('success', 'ជោគជ័យ', payload.message || 'អ្នកបានចុះឈ្មោះជោគជ័យ។');
                         renderSuccessState(payload);
                         return;
                     }
 
-                    if (response.status === 422) {
+                    if (status === 422) {
                         const errors = payload.errors || {};
                         const firstValidationMessage = Object.values(errors)
                             .find((messages) => Array.isArray(messages) && messages.length > 0)?.[0] || '';
@@ -794,29 +941,41 @@
                         (uploadAlert.textContent ? uploadAlert : registrationForm.querySelector('[data-field-error]:not(.hidden)'))
                             ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
+                        hideLoadingOverlay();
                         await showSweetAlert('error', 'សូមពិនិត្យម្តងទៀត', generalMessage || 'សូមពិនិត្យព័ត៌មានដែលបានបំពេញម្តងទៀត។');
                         return;
                     }
                     
-                    if (response.status === 403) {
-                         await showSweetAlert('error', 'គ្មានសិទ្ធិ', payload.message || 'អ្នកមិនមានសិទ្ធិក្នុងការបញ្ជូនពាក្យសុំនេះទេ។');
-                         return;
+                    if (status === 403) {
+                        hideLoadingOverlay();
+                        await showSweetAlert('error', 'គ្មានសិទ្ធិ', payload.message || 'អ្នកមិនមានសិទ្ធិក្នុងការបញ្ជូនពាក្យសុំនេះទេ។');
+                        return;
                     }
 
                     showAlert(payload.message || 'មិនអាចបញ្ជូនពាក្យសុំបានទេ។ សូមសាកល្បងម្តងទៀត។');
                     uploadAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    hideLoadingOverlay();
                     await showSweetAlert('error', 'មានបញ្ហា', payload.message || 'មិនអាចបញ្ជូនពាក្យសុំបានទេ។ សូមសាកល្បងម្តងទៀត។');
                 } catch (error) {
                     showAlert('មិនអាចបញ្ជូនពាក្យសុំបានទេ។ សូមសាកល្បងម្តងទៀត។');
                     uploadAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    hideLoadingOverlay();
                     await showSweetAlert('error', 'មានបញ្ហា', 'អ្នកមិនមានអ៊ីនធឺណិត ឬម៉ាស៊ីនមេមានបញ្ហា។ សូមសាកល្បងម្តងទៀត។');
                 } finally {
+                    hideLoadingOverlay();
                     submitButton?.removeAttribute('disabled');
 
                     if (submitButton) {
                         submitButton.textContent = submitButtonText;
                     }
                 }
+            });
+
+            registrationForm.addEventListener('reset', () => {
+                window.setTimeout(() => {
+                    clearFieldErrors();
+                    showAlert('');
+                }, 0);
             });
         })();
     </script>

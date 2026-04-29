@@ -16,7 +16,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminTeamStaffController extends Controller
@@ -259,26 +258,28 @@ class AdminTeamStaffController extends Controller
             ->with('status', "បានលុបបុគ្គលិក {$teamStaff->name_latin} ដោយជោគជ័យ។");
     }
 
-    public function avatar(TeamStaff $teamStaff): BinaryFileResponse
+    public function avatar(TeamStaff $teamStaff): StreamedResponse
     {
         abort_unless($teamStaff->hasStoredAvatar(), 404);
 
-        return response()->file(UploadStorage::path($teamStaff->avatar_path));
+        return UploadStorage::readDisk($teamStaff->avatar_path)
+            ->response($teamStaff->avatar_path);
     }
 
     public function showDocument(TeamStaff $teamStaff, int $documentIndex): StreamedResponse
     {
         $documents = collect($teamStaff->documents ?? [])->values();
         $document = $documents->get($documentIndex);
+        $path = is_array($document) ? $this->documentPath($document) : null;
 
-        abort_unless($document && UploadStorage::exists($document['path'] ?? null), 404);
+        abort_unless($document && $path && UploadStorage::exists($path), 404);
 
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = UploadStorage::readDisk($document['path']);
+        $disk = UploadStorage::readDisk($path);
 
         return $disk->response(
-            $document['path'],
-            $document['original_name'] ?? basename($document['path']),
+            $path,
+            $this->documentOriginalName($document, $path),
         );
     }
 
@@ -286,13 +287,14 @@ class AdminTeamStaffController extends Controller
     {
         $documents = collect($teamStaff->documents ?? [])->values();
         $document = $documents->get($documentIndex);
+        $path = is_array($document) ? $this->documentPath($document) : null;
 
-        abort_unless($document && UploadStorage::exists($document['path'] ?? null), 404);
+        abort_unless($document && $path && UploadStorage::exists($path), 404);
 
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = UploadStorage::readDisk($document['path']);
+        $disk = UploadStorage::readDisk($path);
 
-        return $disk->download($document['path'], $document['original_name'] ?? basename($document['path']));
+        return $disk->download($path, $this->documentOriginalName($document, $path));
     }
 
     public function destroyDocument(
@@ -305,8 +307,9 @@ class AdminTeamStaffController extends Controller
 
         abort_unless($document, 404);
 
-        if (! empty($document['path'])) {
-            UploadStorage::delete($document['path']);
+        $path = is_array($document) ? $this->documentPath($document) : null;
+        if ($path) {
+            UploadStorage::delete($path);
         }
 
         $teamStaff->update([
@@ -368,13 +371,15 @@ class AdminTeamStaffController extends Controller
         $document = $this->documentForRequirement($teamStaff, $documentRequirement);
 
         abort_unless($document, 404);
+        $path = $this->documentPath($document);
+        abort_unless($path, 404);
 
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = UploadStorage::readDisk($document['path']);
+        $disk = UploadStorage::readDisk($path);
 
         return $disk->response(
-            $document['path'],
-            $document['original_name'] ?? basename($document['path']),
+            $path,
+            $this->documentOriginalName($document, $path),
         );
     }
 
@@ -385,13 +390,15 @@ class AdminTeamStaffController extends Controller
         $document = $this->documentForRequirement($teamStaff, $documentRequirement);
 
         abort_unless($document, 404);
+        $path = $this->documentPath($document);
+        abort_unless($path, 404);
 
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
-        $disk = UploadStorage::readDisk($document['path']);
+        $disk = UploadStorage::readDisk($path);
 
         return $disk->download(
-            $document['path'],
-            $document['original_name'] ?? basename($document['path']),
+            $path,
+            $this->documentOriginalName($document, $path),
         );
     }
 
@@ -457,8 +464,9 @@ class AdminTeamStaffController extends Controller
 
         $document = $documents->get($documentIndex);
 
-        if (! empty($document['path'])) {
-            UploadStorage::delete($document['path']);
+        $path = is_array($document) ? $this->documentPath($document) : null;
+        if ($path) {
+            UploadStorage::delete($path);
         }
 
         $teamStaff->update([
@@ -635,7 +643,7 @@ class AdminTeamStaffController extends Controller
     private function deleteStoredDocuments(array $documents): void
     {
         collect($documents)
-            ->pluck('path')
+            ->map(fn (array $document) => $this->documentPath($document))
             ->filter()
             ->each(fn ($path) => UploadStorage::delete($path));
     }
@@ -750,11 +758,29 @@ class AdminTeamStaffController extends Controller
         $document = collect($teamStaff->documents ?? [])
             ->first(fn (array $entry) => ($entry['requirement_slug'] ?? null) === $documentRequirement->slug);
 
-        if (! $document || empty($document['path']) || ! UploadStorage::exists($document['path'])) {
+        $path = is_array($document) ? $this->documentPath($document) : null;
+
+        if (! $document || ! $path || ! UploadStorage::exists($path)) {
             return null;
         }
 
+        $document['path'] = $path;
+
         return $document;
+    }
+
+    private function documentPath(array $document): ?string
+    {
+        $path = $document['path'] ?? $document['file_path'] ?? null;
+
+        return filled($path) ? (string) $path : null;
+    }
+
+    private function documentOriginalName(array $document, string $path): string
+    {
+        $originalName = $document['original_name'] ?? null;
+
+        return filled($originalName) ? (string) $originalName : basename($path);
     }
 }
 

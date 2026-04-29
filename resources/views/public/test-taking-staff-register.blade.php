@@ -57,7 +57,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('test-taking-staff.store') }}" enctype="multipart/form-data" class="space-y-5 sm:space-y-6" data-registration-form data-max-upload-total="104857600" data-max-upload-total-mobile="10485760" data-submit-loading-text="សូមចាំបន្តិច....">
+                <form method="POST" action="{{ route('test-taking-staff.store') }}" enctype="multipart/form-data" class="space-y-5 sm:space-y-6" data-registration-form data-max-upload-total="52428800" data-max-upload-total-mobile="52428800" data-max-upload-per-file="15728640" data-submit-loading-text="សូមចាំបន្តិច....">
                     @csrf
 
                     <div class="public-section-card space-y-4">
@@ -90,7 +90,7 @@
                                 <select name="test_taking_staff_rank_id" class="form-input">
                                     <option value="">សូមជ្រើសរើសឋានន្តរសក្តិ</option>
                                     @foreach ($ranks as $rank)
-                                        <option value="{{ $rank->id }}" @selected((string) old('test_taking_staff_rank_id') === (string) $rank->id)>{{ $rank->name_kh }} / {{ $rank->name_en }}</option>
+                                        <option value="{{ $rank->id }}" @selected((string) old('test_taking_staff_rank_id') === (string) $rank->id)>{{ $rank->name_kh }}</option>
                                     @endforeach
                                 </select>
                                 @include('partials.field-error', ['name' => 'test_taking_staff_rank_id'])
@@ -211,7 +211,7 @@
                     <div class="public-section-card space-y-4">
                         <div class="public-section-heading">
                             <h2 class="text-xl font-semibold text-slate-950">រូបថត និងឯកសារភ្ជាប់</h2>
-                            <p class="mt-1 text-sm leading-6 text-slate-500">សូមភ្ជាប់រូបថត និងឯកសារដែលត្រូវការតាមបញ្ជីខាងក្រោម។ ទំហំសរុបមិនគួរលើស 100 MB។</p>
+                            <p class="mt-1 text-sm leading-6 text-slate-500">សូមភ្ជាប់រូបថត និងឯកសារដែលត្រូវការតាមបញ្ជីខាងក្រោម។ ទំហំសរុបមិនគួរលើស 50 MB ហើយឯកសារនីមួយៗមិនលើស 15 MB។</p>
                         </div>
 
                         <div class="{{ $errors->has('upload_total') || $errors->has('submission') ? '' : 'hidden' }} rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700" data-upload-total-alert>{{ $errors->first('upload_total') ?: $errors->first('submission') }}</div>
@@ -231,7 +231,7 @@
                                         <p class="text-sm text-slate-500">{{ $documentRequirement->name_en }}</p>
                                         <div class="mt-4">
                                             <input type="file" name="document_files[{{ $documentRequirement->id }}][]" class="public-file-input block w-full" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.webp" multiple>
-                                            <p class="mt-2 text-sm text-slate-500">អ្នកអាចផ្ទុកឯកសារច្រើនសន្លឹកបាន។ ទំហំមិនត្រូវលើសពី 50 MB ក្នុងមួយហ្វាល់។</p>
+                                            <p class="mt-2 text-sm text-slate-500">អ្នកអាចផ្ទុកឯកសារច្រើនសន្លឹកបាន។ ទំហំមិនត្រូវលើសពី 15 MB ក្នុងមួយហ្វាល់។</p>
                                             @include('partials.field-error', ['name' => "document_files.{$documentRequirement->id}"])
                                             @include('partials.field-error', ['name' => "document_files.{$documentRequirement->id}.*"])
                                         </div>
@@ -264,6 +264,7 @@
             if (registrationForm && uploadAlert) {
                 const maxUploadTotal = Number(registrationForm.dataset.maxUploadTotal || 0);
                 const maxUploadTotalMobile = Number(registrationForm.dataset.maxUploadTotalMobile || 0);
+                const maxUploadPerFile = Number(registrationForm.dataset.maxUploadPerFile || 0);
                 const mobileMediaQuery = window.matchMedia ? window.matchMedia('(max-width: 767.98px)') : null;
                 const resolveMaxUploadTotal = () => {
                     const isMobileViewport = mobileMediaQuery ? mobileMediaQuery.matches : window.innerWidth < 768;
@@ -271,24 +272,33 @@
                 };
 
                 const formatMegabytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-                const getSelectedUploadBytes = () => Array.from(
+                const getSelectedFiles = () => Array.from(
                     registrationForm.querySelectorAll('input[type="file"]'),
-                ).reduce((total, input) => total + Array.from(input.files || []).reduce((sum, file) => sum + file.size, 0), 0);
+                ).flatMap((input) => Array.from(input.files || []));
 
                 const syncUploadAlert = () => {
-                    const totalBytes = getSelectedUploadBytes();
+                    const selectedFiles = getSelectedFiles();
+                    const totalBytes = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+                    const largestFile = selectedFiles.reduce(
+                        (largest, file) => (!largest || file.size > largest.size ? file : largest),
+                        null,
+                    );
                     const resolvedMaxUploadTotal = resolveMaxUploadTotal();
-                    const isTooLarge = resolvedMaxUploadTotal > 0 && totalBytes > resolvedMaxUploadTotal;
+                    const isSingleFileTooLarge = !!largestFile && maxUploadPerFile > 0 && largestFile.size > maxUploadPerFile;
+                    const isTotalTooLarge = resolvedMaxUploadTotal > 0 && totalBytes > resolvedMaxUploadTotal;
+                    const hasUploadError = isSingleFileTooLarge || isTotalTooLarge;
 
-                    uploadAlert.classList.toggle('hidden', !isTooLarge);
+                    uploadAlert.classList.toggle('hidden', !hasUploadError);
 
-                    if (isTooLarge) {
+                    if (isSingleFileTooLarge) {
+                        uploadAlert.textContent = `Each file must be ${formatMegabytes(maxUploadPerFile)} or smaller. The file "${largestFile.name}" is ${formatMegabytes(largestFile.size)}.`;
+                    } else if (isTotalTooLarge) {
                         uploadAlert.textContent = `Total upload is too large. Keep it below ${formatMegabytes(resolvedMaxUploadTotal)}. (Current total: ${formatMegabytes(totalBytes)})`;
                     } else {
                         uploadAlert.textContent = '';
                     }
 
-                    return isTooLarge;
+                    return hasUploadError;
                 };
 
                 registrationForm.querySelectorAll('input[type="file"]').forEach((input) => {

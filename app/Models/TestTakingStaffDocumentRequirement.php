@@ -17,6 +17,7 @@ class TestTakingStaffDocumentRequirement extends Model
         'slug',
         'sort_order',
         'is_active',
+        'send_to_telegram',
     ];
 
     protected function casts(): array
@@ -24,6 +25,7 @@ class TestTakingStaffDocumentRequirement extends Model
         return [
             'sort_order' => 'integer',
             'is_active' => 'boolean',
+            'send_to_telegram' => 'boolean',
         ];
     }
 

@@ -172,6 +172,112 @@ class RegistrationManagementTest extends TestCase
         $this->assertSame(3, $application->applicationDocuments()->whereNotNull('file_path')->count());
     }
 
+    public function test_applicant_registration_rejects_document_file_larger_than_15_mb(): void
+    {
+        Storage::fake('local');
+
+        $rankId = Rank::query()->value('id');
+        $courseId = Course::query()->value('id');
+        $culturalLevelId = CulturalLevel::query()->value('id');
+        $documentRequirements = DocumentRequirement::query()->ordered()->get();
+        $firstRequirement = $documentRequirements->firstOrFail();
+
+        $documentStatuses = [];
+        foreach ($documentRequirements as $documentRequirement) {
+            $documentStatuses[$documentRequirement->id] = $documentRequirement->id === $firstRequirement->id ? 'have' : 'dont_have';
+        }
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('Accept', 'application/json')
+            ->post('/applications', [
+                '_token' => $this->csrfToken(),
+                'khmer_name' => 'Oversize KH',
+                'latin_name' => 'Oversize Latin',
+                'id_number' => 'A-15001',
+                'rank_id' => $rankId,
+                'date_of_birth' => '1994-08-10',
+                'date_of_enlistment' => '2015-03-01',
+                'position' => 'Operations Officer',
+                'unit' => 'Royal Army Training Command',
+                'course_id' => $courseId,
+                'cultural_level_id' => $culturalLevelId,
+                'place_of_birth' => 'Phnom Penh',
+                'current_address' => '123 Military Campus Road, Phnom Penh',
+                'family_situation' => 'Single',
+                'phone_number' => '012345678',
+                'document_statuses' => $documentStatuses,
+                'document_files' => [
+                    $firstRequirement->id => [
+                        UploadedFile::fake()->create('oversize-file.pdf', 15361, 'application/pdf'),
+                    ],
+                ],
+            ]);
+
+        $response->assertUnprocessable();
+
+        $errorKeys = array_keys((array) $response->json('errors', []));
+        $hasOversizeError = false;
+
+        foreach ($errorKeys as $errorKey) {
+            if (str_starts_with((string) $errorKey, "document_files.{$firstRequirement->id}.")) {
+                $hasOversizeError = true;
+                break;
+            }
+        }
+
+        $this->assertTrue($hasOversizeError, 'Expected a per-file validation error for oversized uploads.');
+    }
+
+    public function test_applicant_registration_rejects_total_document_uploads_over_50_mb(): void
+    {
+        Storage::fake('local');
+
+        $rankId = Rank::query()->value('id');
+        $courseId = Course::query()->value('id');
+        $culturalLevelId = CulturalLevel::query()->value('id');
+        $documentRequirements = DocumentRequirement::query()->ordered()->get();
+        $firstRequirement = $documentRequirements->firstOrFail();
+
+        $documentStatuses = [];
+        foreach ($documentRequirements as $documentRequirement) {
+            $documentStatuses[$documentRequirement->id] = $documentRequirement->id === $firstRequirement->id ? 'have' : 'dont_have';
+        }
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('Accept', 'application/json')
+            ->post('/applications', [
+                '_token' => $this->csrfToken(),
+                'khmer_name' => 'Total Limit KH',
+                'latin_name' => 'Total Limit Latin',
+                'id_number' => 'A-50001',
+                'rank_id' => $rankId,
+                'date_of_birth' => '1994-08-10',
+                'date_of_enlistment' => '2015-03-01',
+                'position' => 'Operations Officer',
+                'unit' => 'Royal Army Training Command',
+                'course_id' => $courseId,
+                'cultural_level_id' => $culturalLevelId,
+                'place_of_birth' => 'Phnom Penh',
+                'current_address' => '123 Military Campus Road, Phnom Penh',
+                'family_situation' => 'Single',
+                'phone_number' => '012345678',
+                'document_statuses' => $documentStatuses,
+                'document_files' => [
+                    $firstRequirement->id => [
+                        UploadedFile::fake()->create('doc-1.pdf', 15360, 'application/pdf'),
+                        UploadedFile::fake()->create('doc-2.pdf', 15360, 'application/pdf'),
+                        UploadedFile::fake()->create('doc-3.pdf', 15360, 'application/pdf'),
+                        UploadedFile::fake()->create('doc-4.pdf', 15360, 'application/pdf'),
+                    ],
+                ],
+            ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('upload_total');
+    }
+
     public function test_public_registration_sends_all_uploaded_documents_from_marked_types_to_telegram(): void
     {
         Storage::fake('local');
@@ -383,6 +489,89 @@ class RegistrationManagementTest extends TestCase
         });
     }
 
+    public function test_test_taking_staff_registration_sends_only_admin_selected_document_types_to_telegram(): void
+    {
+        Storage::fake('local');
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response(['ok' => true], 200),
+        ]);
+
+        Config::set('services.telegram.enabled', true);
+        Config::set('services.telegram.bot_token', 'telegram-test-token');
+        Config::set('services.telegram.chat_id', 'telegram-test-chat');
+        Config::set('services.telegram.message_thread_id', 12345);
+
+        $rank = TestTakingStaffRank::query()->create([
+            'name_kh' => 'Selected Docs Rank KH',
+            'name_en' => 'Selected Docs Rank',
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        $selectedRequirement = TestTakingStaffDocumentRequirement::query()->create([
+            'name_kh' => 'Selected Requirement KH',
+            'name_en' => 'Selected Requirement EN',
+            'slug' => 'selected-requirement',
+            'sort_order' => 1,
+            'is_active' => true,
+            'send_to_telegram' => true,
+        ]);
+
+        $unselectedRequirement = TestTakingStaffDocumentRequirement::query()->create([
+            'name_kh' => 'Unselected Requirement KH',
+            'name_en' => 'Unselected Requirement EN',
+            'slug' => 'unselected-requirement',
+            'sort_order' => 2,
+            'is_active' => true,
+            'send_to_telegram' => false,
+        ]);
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('Accept', 'application/json')
+            ->post('/test-taking-staff-registrations', [
+                '_token' => $this->csrfToken(),
+                'name_kh' => 'Selected Docs Tester KH',
+                'name_latin' => 'Selected Docs Tester',
+                'test_taking_staff_rank_id' => $rank->id,
+                'date_of_birth' => '1995-01-10',
+                'military_service_day' => '2018-02-01',
+                'phone_number' => '012345678',
+                'avatar_image' => UploadedFile::fake()->image('avatar.png', 300, 300),
+                'document_files' => [
+                    $selectedRequirement->id => [
+                        UploadedFile::fake()->create('selected-document.pdf', 120, 'application/pdf'),
+                    ],
+                    $unselectedRequirement->id => [
+                        UploadedFile::fake()->create('unselected-document.pdf', 120, 'application/pdf'),
+                    ],
+                ],
+            ]);
+
+        $response->assertCreated();
+        Http::assertSentCount(1);
+        Http::assertSent(function ($request) {
+            $data = $request->data();
+            $mediaJson = isset($data['media']) && is_string($data['media'])
+                ? $data['media']
+                : null;
+
+            if (! $mediaJson) {
+                $mediaPart = collect($data)->first(fn ($part) => ($part['name'] ?? null) === 'media');
+                $mediaJson = is_array($mediaPart) ? ($mediaPart['contents'] ?? null) : null;
+            }
+
+            $mediaPayload = is_string($mediaJson) ? json_decode($mediaJson, true) : null;
+            $caption = is_array($mediaPayload) ? (string) ($mediaPayload[0]['caption'] ?? '') : '';
+
+            return str_contains($request->url(), '/sendMediaGroup')
+                && is_array($mediaPayload)
+                && count($mediaPayload) === 2
+                && str_contains($caption, 'Selected Requirement KH')
+                && ! str_contains($caption, 'Unselected Requirement KH');
+        });
+    }
+
     public function test_test_taking_staff_registration_returns_success_page_without_redirect(): void
     {
         Storage::fake('local');
@@ -410,6 +599,104 @@ class RegistrationManagementTest extends TestCase
         $response->assertCreated()
             ->assertSee('public-success-page', false);
 
+    }
+
+    public function test_test_taking_staff_registration_rejects_document_file_larger_than_15_mb(): void
+    {
+        Storage::fake('local');
+
+        $rank = TestTakingStaffRank::query()->create([
+            'name_kh' => 'Limit Rank KH',
+            'name_en' => 'Limit Rank',
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        $documentRequirement = TestTakingStaffDocumentRequirement::query()->create([
+            'name_kh' => 'Limit Document KH',
+            'name_en' => 'Limit Document',
+            'slug' => 'limit-document',
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('Accept', 'application/json')
+            ->post('/test-taking-staff-registrations', [
+                '_token' => $this->csrfToken(),
+                'name_kh' => 'Limit Tester KH',
+                'name_latin' => 'Limit Tester',
+                'test_taking_staff_rank_id' => $rank->id,
+                'date_of_birth' => '1995-01-10',
+                'military_service_day' => '2018-02-01',
+                'phone_number' => '012345678',
+                'avatar_image' => UploadedFile::fake()->image('avatar.png', 300, 300),
+                'document_files' => [
+                    $documentRequirement->id => [
+                        UploadedFile::fake()->create('oversize-document.pdf', 15361, 'application/pdf'),
+                    ],
+                ],
+            ]);
+
+        $response->assertUnprocessable();
+
+        $errorKeys = array_keys((array) $response->json('errors', []));
+        $hasOversizeError = false;
+
+        foreach ($errorKeys as $errorKey) {
+            if (str_starts_with((string) $errorKey, "document_files.{$documentRequirement->id}.")) {
+                $hasOversizeError = true;
+                break;
+            }
+        }
+
+        $this->assertTrue($hasOversizeError, 'Expected a per-file validation error for oversized uploads.');
+    }
+
+    public function test_test_taking_staff_registration_rejects_total_upload_over_50_mb(): void
+    {
+        Storage::fake('local');
+
+        $rank = TestTakingStaffRank::query()->create([
+            'name_kh' => 'Total Limit Rank KH',
+            'name_en' => 'Total Limit Rank',
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        $documentRequirement = TestTakingStaffDocumentRequirement::query()->create([
+            'name_kh' => 'Total Limit Document KH',
+            'name_en' => 'Total Limit Document',
+            'slug' => 'total-limit-document',
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('Accept', 'application/json')
+            ->post('/test-taking-staff-registrations', [
+                '_token' => $this->csrfToken(),
+                'name_kh' => 'Total Limit Tester KH',
+                'name_latin' => 'Total Limit Tester',
+                'test_taking_staff_rank_id' => $rank->id,
+                'date_of_birth' => '1995-01-10',
+                'military_service_day' => '2018-02-01',
+                'phone_number' => '012345678',
+                'avatar_image' => UploadedFile::fake()->image('avatar.png', 300, 300),
+                'document_files' => [
+                    $documentRequirement->id => [
+                        UploadedFile::fake()->create('doc-1.pdf', 15360, 'application/pdf'),
+                        UploadedFile::fake()->create('doc-2.pdf', 15360, 'application/pdf'),
+                        UploadedFile::fake()->create('doc-3.pdf', 15360, 'application/pdf'),
+                        UploadedFile::fake()->create('doc-4.pdf', 15360, 'application/pdf'),
+                    ],
+                ],
+            ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('upload_total');
     }
     public function test_admin_login_page_is_available(): void
     {
@@ -578,6 +865,68 @@ class RegistrationManagementTest extends TestCase
 
         $staff->refresh();
         $this->assertSame([], $staff->documents);
+    }
+
+    public function test_staff_profile_document_routes_support_legacy_file_path_key(): void
+    {
+        Storage::fake('local');
+        $legacyPath = 'team-staff/legacy-profile-document.pdf';
+
+        $staff = $this->createStaffAccount([
+            'avatar_path' => 'team-staff/avatar-test-legacy-staff.jpg',
+            'documents' => [[
+                'label' => 'Legacy Profile Document',
+                'file_path' => $legacyPath,
+                'original_name' => 'legacy-profile-document.pdf',
+                'uploaded_by' => 'staff',
+                'status' => 'Pending',
+            ]],
+        ]);
+
+        Storage::disk('local')->put($legacyPath, 'legacy-profile-document-content');
+
+        $this->post('/staff/login', [
+            'username' => $staff->username,
+            'password' => '058256',
+        ])->assertRedirect(route('staff.password.edit'));
+
+        $this->put('/staff/password', [
+            'password' => 'NewPass123',
+            'password_confirmation' => 'NewPass123',
+        ])->assertRedirect(route('staff.profile.show'));
+
+        $this->get('/staff/profile/documents/0/show')
+            ->assertOk();
+
+        $this->get('/staff/profile/documents/0/download')
+            ->assertOk();
+    }
+
+    public function test_admin_team_staff_document_routes_support_legacy_file_path_key(): void
+    {
+        Storage::fake('local');
+        $legacyPath = 'team-staff/legacy-admin-document.pdf';
+
+        $staff = $this->createStaffAccount([
+            'avatar_path' => 'team-staff/avatar-test-legacy-admin.jpg',
+            'documents' => [[
+                'label' => 'Legacy Admin Document',
+                'file_path' => $legacyPath,
+                'original_name' => 'legacy-admin-document.pdf',
+                'uploaded_by' => 'admin',
+                'status' => 'Approved',
+            ]],
+        ]);
+
+        Storage::disk('local')->put($legacyPath, 'legacy-admin-document-content');
+
+        $this->loginAsAdmin();
+
+        $this->get('/admin/team-staff/'.$staff->id.'/documents/0')
+            ->assertOk();
+
+        $this->get('/admin/team-staff/'.$staff->id.'/documents/0/download')
+            ->assertOk();
     }
 
     public function test_admin_can_create_update_and_delete_system_users(): void

@@ -9,17 +9,16 @@ use App\Support\UploadStorage;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminTestTakingStaffRegistrationController extends Controller
 {
-    public function avatar(TestTakingStaffRegistration $testTakingStaffRegistration): BinaryFileResponse
+    public function avatar(TestTakingStaffRegistration $testTakingStaffRegistration): StreamedResponse
     {
         abort_unless($testTakingStaffRegistration->hasStoredAvatar(), 404);
 
-        $response = response()
-            ->file(UploadStorage::path($testTakingStaffRegistration->avatar_path))
+        $response = UploadStorage::readDisk($testTakingStaffRegistration->avatar_path)
+            ->response($testTakingStaffRegistration->avatar_path)
             ->setPrivate()
             ->setMaxAge(0);
 

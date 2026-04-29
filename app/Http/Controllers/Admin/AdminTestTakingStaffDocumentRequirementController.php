@@ -18,7 +18,11 @@ class AdminTestTakingStaffDocumentRequirementController extends Controller
     {
         return response(
             '<div class="sr-only">Create Document Back to Document List</div>'.view('admin.test-taking-staff-document-requirements.form', [
-            'documentRequirement' => new TestTakingStaffDocumentRequirement(['sort_order' => 1, 'is_active' => true]),
+            'documentRequirement' => new TestTakingStaffDocumentRequirement([
+                'sort_order' => 1,
+                'is_active' => true,
+                'send_to_telegram' => true,
+            ]),
             'mode' => 'create',
             ])->render()
         );
@@ -110,6 +114,7 @@ class AdminTestTakingStaffDocumentRequirementController extends Controller
             ],
             'sort_order' => ['required', 'integer', 'min:1'],
             'is_active' => ['required', 'boolean'],
+            'send_to_telegram' => ['required', 'boolean'],
         ]);
 
         $validated['name_en'] = $validated['name_kh'];

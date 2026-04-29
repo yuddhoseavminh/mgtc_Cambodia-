@@ -277,8 +277,8 @@
                                             <p class="mt-1 text-sm text-slate-500">ឯកសារដែលភ្ជាប់ជាមួយកំណត់ត្រានេះ ប៉ុន្តែមិនស្ថិតក្នុងបញ្ជីតម្រូវការដែលកំពុងប្រើ។</p>
                                             <div class="mt-4 grid gap-3">
                                                 @foreach ($legacyDocuments as $document)
-                                                    @php($documentIndex = $documents->search(fn ($entry) => ($entry['path'] ?? null) === ($document['path'] ?? null)))
-                                                    @if ($documentIndex !== false)
+                                                    @php($documentIndex = $document['document_index'] ?? null)
+                                                    @if ($documentIndex !== null)
                                                         <a href="{{ route('team-staff.documents.download', [$teamStaff, $documentIndex]) }}" class="flex min-h-[68px] items-center justify-between rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 transition hover:bg-white">
                                                             <div>
                                                                 <p class="text-sm font-semibold text-slate-900">{{ $document['label'] ?? 'ឯកសារ' }}</p>
