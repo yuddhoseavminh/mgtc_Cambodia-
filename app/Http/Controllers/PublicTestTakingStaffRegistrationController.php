@@ -421,9 +421,9 @@ class PublicTestTakingStaffRegistrationController extends Controller
         ?string $caption = null
     ): HttpResponse {
         $storedPath = (string) ($attachment['path'] ?? '');
-        $resource = $this->openUploadReadStream($storedPath);
+        $binary = $this->readUploadBinary($storedPath);
 
-        if (! is_resource($resource)) {
+        if ($binary === null) {
             Log::warning('Telegram test-taking staff attachment missing on disk.', [
                 'registration_id' => $registration->id,
                 'file_path' => $attachment['path'],
@@ -442,13 +442,9 @@ class PublicTestTakingStaffRegistrationController extends Controller
             $payload['caption'] = Str::limit($captionText, 900, '...');
         }
 
-        try {
-            return $this->telegramRequest($forceWithoutVerifying)
-                ->attach('document', $resource, $filename)
-                ->post("https://api.telegram.org/bot{$botToken}/sendDocument", $this->telegramPayload($payload));
-        } finally {
-            $this->closeUploadReadStream($resource);
-        }
+        return $this->telegramRequest($forceWithoutVerifying)
+            ->attach('document', $binary, $filename)
+            ->post("https://api.telegram.org/bot{$botToken}/sendDocument", $this->telegramPayload($payload));
     }
 
     private function sendTelegramTextMessage(
@@ -523,14 +519,13 @@ class PublicTestTakingStaffRegistrationController extends Controller
         foreach ($attachments->chunk(10) as $chunk) {
             $request = $this->telegramRequest($forceWithoutVerifying);
             $media = [];
-            $resources = [];
             $validIndex = 0;
 
             foreach ($chunk as $attachment) {
                 $storedPath = (string) ($attachment['path'] ?? '');
-                $resource = $this->openUploadReadStream($storedPath);
+                $binary = $this->readUploadBinary($storedPath);
 
-                if (! is_resource($resource)) {
+                if ($binary === null) {
                     Log::warning('Telegram test-taking staff attachment missing on disk.', [
                         'registration_id' => $registration->id,
                         'file_path' => $attachment['path'],
@@ -539,7 +534,7 @@ class PublicTestTakingStaffRegistrationController extends Controller
                 }
 
                 $attachName = 'document_'.$validIndex;
-                $request = $request->attach($attachName, $resource, ($attachment['original_name'] ?? null) ?: basename($storedPath));
+                $request = $request->attach($attachName, $binary, ($attachment['original_name'] ?? null) ?: basename($storedPath));
 
                 $mediaItem = [
                     'type' => 'document',
@@ -552,7 +547,6 @@ class PublicTestTakingStaffRegistrationController extends Controller
                 }
 
                 $media[] = $mediaItem;
-                $resources[] = $resource;
                 $validIndex++;
             }
 
@@ -560,19 +554,13 @@ class PublicTestTakingStaffRegistrationController extends Controller
                 continue;
             }
 
-            try {
-                $response = $request->post(
-                    "https://api.telegram.org/bot{$botToken}/sendMediaGroup",
-                    $this->telegramPayload([
-                        'chat_id' => $chatId,
-                        'media' => json_encode($media, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                    ])
-                );
-            } finally {
-                foreach ($resources as $resource) {
-                    $this->closeUploadReadStream($resource);
-                }
-            }
+            $response = $request->post(
+                "https://api.telegram.org/bot{$botToken}/sendMediaGroup",
+                $this->telegramPayload([
+                    'chat_id' => $chatId,
+                    'media' => json_encode($media, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                ])
+            );
 
             $lastResponse = $response;
 
@@ -795,30 +783,16 @@ class PublicTestTakingStaffRegistrationController extends Controller
         return 0;
     }
 
-    /**
-     * @return resource|null
-     */
-    private function openUploadReadStream(?string $path)
+    private function readUploadBinary(?string $path): ?string
     {
         if (! filled($path) || ! UploadStorage::exists($path)) {
             return null;
         }
 
-        $stream = UploadStorage::readDisk($path)->readStream($path);
-
-        return is_resource($stream) ? $stream : null;
-    }
-
-    private function closeUploadReadStream(mixed $stream): void
-    {
-        if (! is_resource($stream)) {
-            return;
-        }
-
         try {
-            fclose($stream);
+            return UploadStorage::readDisk($path)->get($path);
         } catch (\Throwable) {
-            // The HTTP client may already close the stream. Ignore close failures.
+            return null;
         }
     }
 
