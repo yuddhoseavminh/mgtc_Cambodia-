@@ -483,7 +483,7 @@ class PublicApplicationController extends Controller
                     ])
                 );
         } finally {
-            fclose($resource);
+            $this->closeUploadReadStream($resource);
         }
     }
 
@@ -570,7 +570,7 @@ class PublicApplicationController extends Controller
                 );
             } finally {
                 foreach ($resources as $resource) {
-                    fclose($resource);
+                    $this->closeUploadReadStream($resource);
                 }
             }
 
@@ -858,6 +858,19 @@ class PublicApplicationController extends Controller
         $stream = UploadStorage::readDisk($path)->readStream($path);
 
         return is_resource($stream) ? $stream : null;
+    }
+
+    private function closeUploadReadStream(mixed $stream): void
+    {
+        if (! is_resource($stream)) {
+            return;
+        }
+
+        try {
+            fclose($stream);
+        } catch (\Throwable) {
+            // The HTTP client may already close the stream. Ignore close failures.
+        }
     }
 }
 

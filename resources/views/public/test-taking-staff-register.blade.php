@@ -226,14 +226,42 @@
                         @if ($documentRequirements->isNotEmpty())
                             <div class="grid gap-3 sm:gap-4">
                                 @foreach ($documentRequirements as $documentRequirement)
-                                    <div class="public-upload-card">
-                                        <label class="form-label !mb-2">{{ $documentRequirement->name_kh }}</label>
-                                        <p class="text-sm text-slate-500">{{ $documentRequirement->name_en }}</p>
-                                        <div class="mt-4">
-                                            <input type="file" name="document_files[{{ $documentRequirement->id }}][]" class="public-file-input block w-full" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.webp" multiple>
-                                            <p class="mt-2 text-sm text-slate-500">អ្នកអាចផ្ទុកឯកសារច្រើនសន្លឹកបាន។ ទំហំមិនត្រូវលើសពី 15 MB ក្នុងមួយហ្វាល់។</p>
-                                            @include('partials.field-error', ['name' => "document_files.{$documentRequirement->id}"])
-                                            @include('partials.field-error', ['name' => "document_files.{$documentRequirement->id}.*"])
+                                    @php
+                                        $selectedStatus = old("document_statuses.{$documentRequirement->id}", 'dont_have');
+                                    @endphp
+                                    <div class="public-upload-card" data-document-card>
+                                        <div class="space-y-4">
+                                            <div>
+                                                <label class="form-label !mb-2">{{ $documentRequirement->name_kh }}</label>
+                                                <p class="text-sm text-slate-500">{{ $documentRequirement->name_en }}</p>
+                                            </div>
+
+                                            <div class="space-y-4">
+                                                <div>
+                                                    <label class="form-label">* ស្ថានភាពឯកសារ</label>
+                                                    <select name="document_statuses[{{ $documentRequirement->id }}]" class="form-input" data-document-status>
+                                                        <option value="have" @selected($selectedStatus === 'have')>មាន</option>
+                                                        <option value="dont_have" @selected($selectedStatus === 'dont_have')>មិនមាន</option>
+                                                    </select>
+                                                    @include('partials.field-error', ['name' => "document_statuses.{$documentRequirement->id}"])
+                                                </div>
+
+                                                <div class="{{ $selectedStatus === 'have' ? '' : 'hidden' }}" data-document-file-wrapper>
+                                                    <label class="form-label">Upload File(s)</label>
+                                                    <div class="space-y-3" data-document-file-list>
+                                                        <div class="flex flex-col gap-2 sm:flex-row sm:items-start" data-document-file-row>
+                                                            <input type="file" name="document_files[{{ $documentRequirement->id }}][]" class="public-file-input block w-full min-w-0 flex-1" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.webp" multiple data-document-file-input>
+                                                            <button type="button" class="hidden rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50" data-document-remove-file>Remove</button>
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" class="mt-3 inline-flex items-center rounded-xl border border-[#356AE6]/30 bg-[#356AE6]/5 px-4 py-2 text-sm font-semibold text-[#356AE6] transition hover:bg-[#356AE6]/10" data-document-add-file>
+                                                        + Add another file
+                                                    </button>
+                                                    <p class="mt-2 text-sm text-slate-500">អ្នកអាចផ្ទុកឯកសារច្រើនសន្លឹកបាន។ ទំហំមិនត្រូវលើសពី 15 MB ក្នុងមួយហ្វាល់។</p>
+                                                    @include('partials.field-error', ['name' => "document_files.{$documentRequirement->id}"])
+                                                    @include('partials.field-error', ['name' => "document_files.{$documentRequirement->id}.*"])
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 @endforeach
@@ -301,9 +329,15 @@
                     return hasUploadError;
                 };
 
-                registrationForm.querySelectorAll('input[type="file"]').forEach((input) => {
-                    input.addEventListener('change', syncUploadAlert);
+                registrationForm.addEventListener('change', (event) => {
+                    const target = event.target;
+
+                    if (target instanceof HTMLInputElement && target.type === 'file') {
+                        syncUploadAlert();
+                    }
                 });
+
+                registrationForm.addEventListener('registration-files-changed', syncUploadAlert);
 
                 registrationForm.addEventListener('submit', (event) => {
                     if (syncUploadAlert()) {
@@ -318,6 +352,124 @@
 
                 mobileMediaQuery?.addEventListener?.('change', syncUploadAlert);
             }
+        </script>
+
+        <script>
+            document.querySelectorAll('[data-document-card]').forEach((card) => {
+                const select = card.querySelector('[data-document-status]');
+                const fileWrapper = card.querySelector('[data-document-file-wrapper]');
+                const fileList = card.querySelector('[data-document-file-list]');
+                const addFileButton = card.querySelector('[data-document-add-file]');
+
+                if (!select || !fileWrapper) {
+                    return;
+                }
+
+                const notifyFilesChanged = () => {
+                    registrationForm?.dispatchEvent(new Event('registration-files-changed'));
+                };
+
+                const updateRemoveButtons = () => {
+                    if (!fileList) {
+                        return;
+                    }
+
+                    const rows = Array.from(fileList.querySelectorAll('[data-document-file-row]'));
+
+                    rows.forEach((row) => {
+                        row.querySelector('[data-document-remove-file]')?.classList.toggle('hidden', rows.length < 2);
+                    });
+                };
+
+                const syncDocumentField = () => {
+                    const hasDocument = select.value === 'have';
+                    fileWrapper.classList.toggle('hidden', !hasDocument);
+
+                    if (!hasDocument) {
+                        fileWrapper.querySelectorAll('input[type="file"]').forEach((input) => {
+                            input.value = '';
+                        });
+
+                        fileList?.querySelectorAll('[data-document-file-row]').forEach((row, index) => {
+                            if (index > 0) {
+                                row.remove();
+                            }
+                        });
+
+                        updateRemoveButtons();
+                        notifyFilesChanged();
+                    }
+                };
+
+                syncDocumentField();
+                select.addEventListener('change', syncDocumentField);
+
+                addFileButton?.addEventListener('click', () => {
+                    if (!fileList) {
+                        return;
+                    }
+
+                    const sourceInput = fileList.querySelector('[data-document-file-input]');
+
+                    if (!sourceInput) {
+                        return;
+                    }
+
+                    const row = document.createElement('div');
+                    row.className = 'flex flex-col gap-2 sm:flex-row sm:items-start';
+                    row.setAttribute('data-document-file-row', '');
+
+                    const input = sourceInput.cloneNode(false);
+                    input.value = '';
+
+                    const removeButton = document.createElement('button');
+                    removeButton.type = 'button';
+                    removeButton.className = 'rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50';
+                    removeButton.setAttribute('data-document-remove-file', '');
+                    removeButton.textContent = 'Remove';
+
+                    row.append(input, removeButton);
+                    fileList.append(row);
+                    updateRemoveButtons();
+                    input.click();
+                });
+
+                fileList?.addEventListener('click', (event) => {
+                    if (!(event.target instanceof Element)) {
+                        return;
+                    }
+
+                    const removeButton = event.target.closest('[data-document-remove-file]');
+
+                    if (!removeButton) {
+                        return;
+                    }
+
+                    const rows = Array.from(fileList.querySelectorAll('[data-document-file-row]'));
+
+                    if (rows.length < 2) {
+                        return;
+                    }
+
+                    removeButton.closest('[data-document-file-row]')?.remove();
+                    updateRemoveButtons();
+                    notifyFilesChanged();
+                });
+
+                registrationForm?.addEventListener('reset', () => {
+                    window.setTimeout(() => {
+                        fileList?.querySelectorAll('[data-document-file-row]').forEach((row, index) => {
+                            if (index > 0) {
+                                row.remove();
+                            }
+                        });
+
+                        updateRemoveButtons();
+                    }, 0);
+                });
+
+                updateRemoveButtons();
+            });
         </script>
 
         <script>
@@ -338,6 +490,7 @@
                 const loadingProgress = loadingOverlay?.querySelector('[data-submit-upload-progress]');
                 const loadingProgressBar = loadingOverlay?.querySelector('[data-submit-upload-progress-bar]');
                 const loadingProgressText = loadingOverlay?.querySelector('[data-submit-upload-progress-text]');
+                const loadingFileStatus = loadingOverlay?.querySelector('[data-submit-upload-file-status]');
                 const csrfToken = document.head.querySelector('meta[name="csrf-token"]')?.content || '';
                 const fieldErrorElements = Array.from(registrationForm.querySelectorAll('[data-field-error]'));
 
@@ -345,6 +498,90 @@
                 const getSelectedUploadBytes = () => Array.from(
                     registrationForm.querySelectorAll('input[type="file"]'),
                 ).reduce((total, input) => total + Array.from(input.files || []).reduce((sum, file) => sum + file.size, 0), 0);
+                const truncateFileName = (fileName, maxLength = 52) => {
+                    if (typeof fileName !== 'string') {
+                        return '';
+                    }
+
+                    if (fileName.length <= maxLength) {
+                        return fileName;
+                    }
+
+                    return `${fileName.slice(0, maxLength - 3)}...`;
+                };
+                const setUploadFileStatus = (text = '') => {
+                    if (!loadingFileStatus) {
+                        return;
+                    }
+
+                    loadingFileStatus.textContent = text;
+                    loadingFileStatus.classList.toggle('hidden', !text);
+                };
+                const uploadTrackingState = {
+                    files: [],
+                    cumulativeFileBytes: [],
+                    totalFileBytes: 0,
+                };
+                const resetUploadTrackingState = () => {
+                    uploadTrackingState.files = [];
+                    uploadTrackingState.cumulativeFileBytes = [];
+                    uploadTrackingState.totalFileBytes = 0;
+                    setUploadFileStatus('');
+                };
+                const buildUploadTrackingState = (formData) => {
+                    const files = [];
+
+                    for (const [, value] of formData.entries()) {
+                        if (value instanceof File && value.size > 0) {
+                            files.push({
+                                name: value.name || 'file',
+                                size: value.size,
+                            });
+                        }
+                    }
+
+                    let cumulativeSize = 0;
+                    const cumulativeFileBytes = files.map((file) => {
+                        cumulativeSize += file.size;
+                        return cumulativeSize;
+                    });
+
+                    uploadTrackingState.files = files;
+                    uploadTrackingState.cumulativeFileBytes = cumulativeFileBytes;
+                    uploadTrackingState.totalFileBytes = cumulativeSize;
+                };
+                const resolveCurrentUploadingFile = (loadedBytes, totalBytes) => {
+                    if (uploadTrackingState.files.length === 0 || uploadTrackingState.totalFileBytes <= 0) {
+                        return null;
+                    }
+
+                    let normalizedLoadedBytes = Number(loadedBytes) || 0;
+                    const safeTotalBytes = Number(totalBytes) || 0;
+
+                    if (safeTotalBytes > 0) {
+                        const progressRatio = Math.min(1, Math.max(0, normalizedLoadedBytes / safeTotalBytes));
+                        normalizedLoadedBytes = progressRatio * uploadTrackingState.totalFileBytes;
+                    }
+
+                    const clampedLoadedBytes = Math.min(
+                        uploadTrackingState.totalFileBytes,
+                        Math.max(0, normalizedLoadedBytes),
+                    );
+
+                    let fileIndex = uploadTrackingState.cumulativeFileBytes.findIndex(
+                        (cumulativeBytes) => clampedLoadedBytes <= cumulativeBytes,
+                    );
+
+                    if (fileIndex < 0) {
+                        fileIndex = uploadTrackingState.files.length - 1;
+                    }
+
+                    return {
+                        index: fileIndex,
+                        total: uploadTrackingState.files.length,
+                        name: uploadTrackingState.files[fileIndex]?.name || 'file',
+                    };
+                };
                 const canCompressClientImage = !!(window.File && window.FileReader && window.HTMLCanvasElement && window.URL);
 
                 const isCompressibleImage = (file) => file instanceof File
@@ -407,6 +644,10 @@
                 const buildSubmissionFormData = async () => {
                     const rawFormData = new FormData(registrationForm);
                     const optimizedFormData = new FormData();
+                    const compressibleImageCount = Array.from(rawFormData.values()).filter(
+                        (entry) => isCompressibleImage(entry),
+                    ).length;
+                    let processedCompressibleImages = 0;
 
                     for (const [name, value] of rawFormData.entries()) {
                         if (!isCompressibleImage(value)) {
@@ -415,8 +656,17 @@
                         }
 
                         if (loadingOverlayMessage) {
-                            loadingOverlayMessage.textContent = 'កំពុងបង្រួមរូបភាព...';
+                            loadingOverlayMessage.textContent = 'Preparing files...';
                         }
+
+                        setUploadFileStatus(
+                            'Optimizing image '
+                            + (processedCompressibleImages + 1)
+                            + '/'
+                            + compressibleImageCount
+                            + ': '
+                            + truncateFileName(value.name || 'image'),
+                        );
 
                         const compressedImage = await compressImageFile(value, {
                             maxDimension: name === 'avatar_image' ? 1440 : 1800,
@@ -424,8 +674,10 @@
                         });
 
                         optimizedFormData.append(name, compressedImage || value);
+                        processedCompressibleImages += 1;
                     }
 
+                    setUploadFileStatus('');
                     return optimizedFormData;
                 };
 
@@ -460,6 +712,8 @@
                     if (loadingProgressText) {
                         loadingProgressText.textContent = '0%';
                     }
+
+                    setUploadFileStatus('');
                 };
 
                 const showLoadingOverlayNow = (message) => {
@@ -471,6 +725,7 @@
                         loadingOverlayMessage.textContent = message || submitLoadingText;
                     }
 
+                    setUploadFileStatus('');
                     loadingOverlay.classList.remove('hidden');
                     loadingOverlay.setAttribute('aria-hidden', 'false');
                     document.body.classList.add('overflow-hidden');
@@ -485,6 +740,7 @@
                     loadingOverlay.setAttribute('aria-hidden', 'true');
                     document.body.classList.remove('overflow-hidden');
                     resetUploadProgress();
+                    resetUploadTrackingState();
                 };
 
                 const showSweetAlert = async (icon, title, text) => {
@@ -586,14 +842,40 @@
 
                     xhr.upload.addEventListener('progress', (event) => {
                         if (!event.lengthComputable) {
-                            setUploadProgress(0, 0);
+                            setUploadProgress(event.loaded || 0, 0);
+
+                            const indeterminateFile = resolveCurrentUploadingFile(event.loaded || 0, event.total || 0);
+                            if (indeterminateFile) {
+                                setUploadFileStatus(
+                                    'Uploading file '
+                                    + (indeterminateFile.index + 1)
+                                    + '/'
+                                    + indeterminateFile.total
+                                    + ': '
+                                    + truncateFileName(indeterminateFile.name),
+                                );
+                            }
+
                             return;
                         }
 
                         setUploadProgress(event.loaded, event.total);
+                        const currentFile = resolveCurrentUploadingFile(event.loaded, event.total);
+
+                        if (currentFile) {
+                            setUploadFileStatus(
+                                'Uploading file '
+                                + (currentFile.index + 1)
+                                + '/'
+                                + currentFile.total
+                                + ': '
+                                + truncateFileName(currentFile.name),
+                            );
+                        }
 
                         if (event.loaded >= event.total && loadingOverlayMessage) {
-                            loadingOverlayMessage.textContent = 'កំពុងរក្សាទុកឯកសារ...';
+                            loadingOverlayMessage.textContent = 'Saving uploaded files...';
+                            setUploadFileStatus('Upload completed. Waiting for server response...');
                         }
                     });
 
@@ -657,14 +939,30 @@
                         submitButton.textContent = submitLoadingText;
                     }
 
-                    showLoadingOverlayNow('កំពុងផ្ទុកឯកសារ...');
+                    showLoadingOverlayNow('Uploading files...');
                     setUploadProgress(0, getSelectedUploadBytes());
+                    resetUploadTrackingState();
 
                     try {
                         const formData = await buildSubmissionFormData();
+                        buildUploadTrackingState(formData);
 
                         if (loadingOverlayMessage) {
-                            loadingOverlayMessage.textContent = 'កំពុងផ្ទុកឯកសារ...';
+                            loadingOverlayMessage.textContent = 'Uploading files...';
+                        }
+
+                        if (uploadTrackingState.totalFileBytes > 0) {
+                            setUploadProgress(0, uploadTrackingState.totalFileBytes);
+
+                            const firstUploadFile = uploadTrackingState.files[0];
+                            setUploadFileStatus(
+                                'Uploading file 1/'
+                                + uploadTrackingState.files.length
+                                + ': '
+                                + truncateFileName(firstUploadFile?.name || 'file'),
+                            );
+                        } else {
+                            setUploadFileStatus('');
                         }
 
                         const { status, payload } = await submitWithProgress(formData);

@@ -43,6 +43,16 @@
         animation: public-submit-loading-spin 0.8s linear infinite;
     }
 
+    .public-submit-loading-file-status {
+        margin-top: 0.6rem;
+        min-height: 1.25rem;
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+
     .public-submit-loading-progress {
         margin-top: 1.25rem;
     }
@@ -92,6 +102,7 @@
     <div class="public-submit-loading-card" role="status" aria-live="polite" aria-busy="true">
         <p class="public-submit-loading-title" data-submit-loading-message>សូមចាំបន្តិច....</p>
         <div class="public-submit-loading-spinner" aria-hidden="true"></div>
+        <p class="public-submit-loading-file-status hidden" data-submit-upload-file-status></p>
         <div class="public-submit-loading-progress hidden" data-submit-upload-progress>
             <div class="public-submit-loading-progress-track">
                 <div class="public-submit-loading-progress-bar" data-submit-upload-progress-bar></div>

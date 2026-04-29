@@ -374,6 +374,19 @@ class PublicTestTakingStaffRegistrationController extends Controller
             return ['primary' => $primaryResponse, 'fallback' => null];
         }
 
+        $fallbackMediaResponse = $this->sendTelegramRegistrationMediaIndividually(
+            $registration,
+            $attachments,
+            $chatId,
+            $botToken,
+            $message,
+            $forceWithoutVerifying
+        );
+
+        if ($fallbackMediaResponse?->successful()) {
+            return ['primary' => $primaryResponse, 'fallback' => $fallbackMediaResponse];
+        }
+
         return [
             'primary' => $primaryResponse,
             'fallback' => $this->sendTelegramTextMessage($chatId, $botToken, $message, $forceWithoutVerifying),
@@ -385,22 +398,12 @@ class PublicTestTakingStaffRegistrationController extends Controller
      */
     private function preferredTelegramAttachments(TestTakingStaffRegistration $registration): Collection
     {
-        $attachments = $this->selectedTelegramDocuments($registration)
+        return $this->selectedTelegramDocuments($registration)
             ->filter(fn ($document) => filled($document->file_path) && UploadStorage::exists($document->file_path))
             ->map(fn ($document) => [
                 'path' => (string) $document->file_path,
                 'original_name' => (string) ($document->original_name ?: basename((string) $document->file_path)),
             ])
-            ->values();
-
-        if (filled($registration->avatar_path) && UploadStorage::exists($registration->avatar_path)) {
-            $attachments->push([
-                'path' => (string) $registration->avatar_path,
-                'original_name' => (string) ($registration->avatar_original_name ?: basename((string) $registration->avatar_path)),
-            ]);
-        }
-
-        return $attachments
             ->unique('path')
             ->values();
     }
@@ -414,7 +417,8 @@ class PublicTestTakingStaffRegistrationController extends Controller
         string $chatId,
         string $botToken,
         string $message,
-        bool $forceWithoutVerifying = false
+        bool $forceWithoutVerifying = false,
+        ?string $caption = null
     ): HttpResponse {
         $storedPath = (string) ($attachment['path'] ?? '');
         $resource = $this->openUploadReadStream($storedPath);
@@ -429,16 +433,21 @@ class PublicTestTakingStaffRegistrationController extends Controller
         }
 
         $filename = ($attachment['original_name'] ?? null) ?: basename($storedPath);
+        $payload = [
+            'chat_id' => $chatId,
+        ];
+        $captionText = $caption ?? $message;
+
+        if (filled($captionText)) {
+            $payload['caption'] = Str::limit($captionText, 900, '...');
+        }
 
         try {
             return $this->telegramRequest($forceWithoutVerifying)
                 ->attach('document', $resource, $filename)
-                ->post("https://api.telegram.org/bot{$botToken}/sendDocument", $this->telegramPayload([
-                    'chat_id' => $chatId,
-                    'caption' => Str::limit($message, 900, '...'),
-                ]));
+                ->post("https://api.telegram.org/bot{$botToken}/sendDocument", $this->telegramPayload($payload));
         } finally {
-            fclose($resource);
+            $this->closeUploadReadStream($resource);
         }
     }
 
@@ -561,9 +570,43 @@ class PublicTestTakingStaffRegistrationController extends Controller
                 );
             } finally {
                 foreach ($resources as $resource) {
-                    fclose($resource);
+                    $this->closeUploadReadStream($resource);
                 }
             }
+
+            $lastResponse = $response;
+
+            if (! $response->successful()) {
+                return $response;
+            }
+        }
+
+        return $lastResponse;
+    }
+
+    /**
+     * @param  Collection<int, array{path: string, original_name: string}>  $attachments
+     */
+    private function sendTelegramRegistrationMediaIndividually(
+        TestTakingStaffRegistration $registration,
+        Collection $attachments,
+        string $chatId,
+        string $botToken,
+        string $message,
+        bool $forceWithoutVerifying = false
+    ): ?HttpResponse {
+        $lastResponse = null;
+
+        foreach ($attachments->values() as $index => $attachment) {
+            $response = $this->sendTelegramRegistrationMedia(
+                $registration,
+                $attachment,
+                $chatId,
+                $botToken,
+                $message,
+                $forceWithoutVerifying,
+                $index === 0 ? $message : null
+            );
 
             $lastResponse = $response;
 
@@ -621,11 +664,11 @@ class PublicTestTakingStaffRegistrationController extends Controller
             ->filter(function ($document): bool {
                 $requirement = $document->documentRequirement;
 
-                if (! $requirement) {
+                if (! $requirement || ! filled($document->file_path)) {
                     return false;
                 }
 
-                return (bool) ($requirement->send_to_telegram ?? true);
+                return (bool) ($requirement->send_to_telegram ?? false);
             })
             ->values();
     }
@@ -764,6 +807,19 @@ class PublicTestTakingStaffRegistrationController extends Controller
         $stream = UploadStorage::readDisk($path)->readStream($path);
 
         return is_resource($stream) ? $stream : null;
+    }
+
+    private function closeUploadReadStream(mixed $stream): void
+    {
+        if (! is_resource($stream)) {
+            return;
+        }
+
+        try {
+            fclose($stream);
+        } catch (\Throwable) {
+            // The HTTP client may already close the stream. Ignore close failures.
+        }
     }
 
     /**
