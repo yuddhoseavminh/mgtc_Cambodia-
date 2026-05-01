@@ -185,11 +185,11 @@
                             </div>
 
                             <div>
-                                <label class="form-label">* ថ្ងៃចូលបម្រើកងទ័ពកងទ័ព</label>
-                                <div class="date-picker" data-date-picker data-placeholder="សូមជ្រើសរើសថ្ងៃចូលបម្រើកងទ័ពកងទ័ព">
+                                <label class="form-label">* ថ្ងៃចូលបម្រើកងទ័ព</label>
+                                <div class="date-picker" data-date-picker data-placeholder="សូមជ្រើសរើសថ្ងៃចូលបម្រើកងទ័ព">
                                     <input type="hidden" name="military_service_day" value="{{ old('military_service_day') }}" data-date-value data-max="{{ now()->toDateString() }}">
                                     <button type="button" class="date-picker-trigger" data-date-toggle aria-expanded="false">
-                                        <span class="date-picker-text" data-date-display>{{ old('military_service_day') ? \Illuminate\Support\Carbon::parse(old('military_service_day'))->locale('km')->translatedFormat('d M Y') : 'សូមជ្រើសរើសថ្ងៃចូលបម្រើកងទ័ពកងទ័ព' }}</span>
+                                        <span class="date-picker-text" data-date-display>{{ old('military_service_day') ? \Illuminate\Support\Carbon::parse(old('military_service_day'))->locale('km')->translatedFormat('d M Y') : 'សូមជ្រើសរើសថ្ងៃចូលបម្រើកងទ័ព' }}</span>
                                         <span class="date-picker-icon">
                                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                                 <rect x="3" y="4" width="18" height="18" rx="2"></rect>
