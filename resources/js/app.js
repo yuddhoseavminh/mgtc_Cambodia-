@@ -577,7 +577,7 @@ function initSweetDeleteConfirmations() {
                 if (response.status < 200 || response.status >= 300) {
                     const message = response?.data?.message
                         || Object.values(response?.data?.errors || {})?.[0]?.[0]
-                        || 'Please check the data and try again.';
+                        || 'Request failed. Please refresh and try again.';
 
                     await Swal.fire({
                         icon: 'error',
@@ -789,9 +789,25 @@ function resolveFormMethod(form) {
 }
 
 function extractErrorMessage(payload, fallback) {
+    if (typeof payload === 'string' && payload.trim() !== '') {
+        return payload.trim();
+    }
+
     return payload?.message
         || Object.values(payload?.errors || {})?.[0]?.[0]
         || fallback;
+}
+
+function fallbackErrorMessageByStatus(status, fallback) {
+    if (status === 404) {
+        return 'The requested record was not found. Please refresh and try again.';
+    }
+
+    if (status === 419) {
+        return 'Your session expired. Please refresh and sign in again.';
+    }
+
+    return fallback;
 }
 
 function getActionButtons(form) {
@@ -933,13 +949,23 @@ function initAdminActionFlows() {
                     return;
                 }
 
-                await showActionResult('error', 'Error', extractErrorMessage(response.data, 'An unexpected error occurred. Please try again.'));
+                await showActionResult(
+                    'error',
+                    'Error',
+                    extractErrorMessage(
+                        response.data,
+                        fallbackErrorMessageByStatus(response.status, 'Request failed. Please try again.'),
+                    ),
+                );
             } catch (error) {
                 Swal.close();
                 await showActionResult(
                     'error',
                     'Error',
-                    extractErrorMessage(error?.response?.data, 'An unexpected error occurred. Please try again.'),
+                    extractErrorMessage(
+                        error?.response?.data,
+                        fallbackErrorMessageByStatus(error?.response?.status, 'Request failed. Please try again.'),
+                    ),
                 );
             } finally {
                 setButtonsDisabled(submitButtons, false);
