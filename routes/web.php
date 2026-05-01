@@ -102,7 +102,7 @@ Route::prefix('admin')->group(function () {
         Route::delete('/applications/{application}', [AdminApplicationController::class, 'destroy'])->name('admin.applications.destroy');
         Route::post('/applications/{application}/documents', [AdminDocumentController::class, 'store'])
             ->name('admin.documents.store');
-        Route::put('/applications/{application}/documents/{applicationDocument}', [AdminDocumentController::class, 'update'])
+        Route::match(['put', 'post'], '/applications/{application}/documents/{applicationDocument}', [AdminDocumentController::class, 'update'])
             ->name('admin.documents.update');
         Route::delete('/applications/{application}/documents/{applicationDocument}', [AdminDocumentController::class, 'destroy'])
             ->name('admin.documents.destroy');
