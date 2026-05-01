@@ -8,6 +8,7 @@ use App\Models\ApplicationDocument;
 use App\Models\DocumentRequirement;
 use App\Support\UploadStorage;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -38,21 +39,25 @@ class AdminDocumentController extends Controller
     public function update(
         Request $request,
         Application $application,
-        ApplicationDocument $applicationDocument,
-    ): RedirectResponse {
-        abort_unless($applicationDocument->application_id === $application->id, 404);
+        int $applicationDocument,
+    ): RedirectResponse|JsonResponse {
+        $applicationDocumentModel = $application->applicationDocuments()->find($applicationDocument);
+
+        if (! $applicationDocumentModel) {
+            return $this->documentNotFoundResponse($request, $application, $applicationDocument);
+        }
 
         $request->validate([
             'document_file' => ['required', 'file', 'max:51200', 'mimes:pdf,jpg,jpeg,png,doc,docx,webp'],
         ]);
 
-        if ($applicationDocument->file_path) {
-            UploadStorage::delete($applicationDocument->file_path);
+        if ($applicationDocumentModel->file_path) {
+            UploadStorage::delete($applicationDocumentModel->file_path);
         }
 
         $file = $request->file('document_file');
 
-        $applicationDocument->update([
+        $applicationDocumentModel->update([
             'status' => ApplicationDocument::STATUS_HAVE,
             'file_path' => UploadStorage::store($file, 'applications/documents'),
             'original_name' => $file->getClientOriginalName(),
@@ -61,15 +66,19 @@ class AdminDocumentController extends Controller
         return back()->with('status', 'បានជំនួសឯកសារដោយជោគជ័យ។');
     }
 
-    public function destroy(Application $application, ApplicationDocument $applicationDocument): RedirectResponse
+    public function destroy(Request $request, Application $application, int $applicationDocument): RedirectResponse|JsonResponse
     {
-        abort_unless($applicationDocument->application_id === $application->id, 404);
+        $applicationDocumentModel = $application->applicationDocuments()->find($applicationDocument);
 
-        if ($applicationDocument->file_path) {
-            UploadStorage::delete($applicationDocument->file_path);
+        if (! $applicationDocumentModel) {
+            return $this->documentNotFoundResponse($request, $application, $applicationDocument);
         }
 
-        $applicationDocument->delete();
+        if ($applicationDocumentModel->file_path) {
+            UploadStorage::delete($applicationDocumentModel->file_path);
+        }
+
+        $applicationDocumentModel->delete();
 
         return back()->with('status', 'បានលុបឯកសារដោយជោគជ័យ។');
     }
@@ -150,5 +159,24 @@ class AdminDocumentController extends Controller
         }
 
         return $applicationDocument;
+    }
+
+    private function documentNotFoundResponse(
+        Request $request,
+        Application $application,
+        int $applicationDocumentId,
+    ): RedirectResponse|JsonResponse {
+        Log::warning('Application document not found for update/delete.', [
+            'application_id' => $application->getKey(),
+            'application_document_id' => $applicationDocumentId,
+        ]);
+
+        $message = 'The selected document was not found for this application.';
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message], 404);
+        }
+
+        return back()->withErrors(['documents' => $message]);
     }
 }
