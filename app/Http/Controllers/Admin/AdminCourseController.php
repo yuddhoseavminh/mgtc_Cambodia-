@@ -101,11 +101,19 @@ class AdminCourseController extends Controller
      */
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1500'],
             'duration' => ['required', 'string', 'max:100'],
             'is_active' => ['required', 'boolean'],
+            'is_protected' => ['nullable', 'boolean'],
         ]);
+
+        $validated['is_protected'] = filter_var(
+            $validated['is_protected'] ?? false,
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        return $validated;
     }
 }

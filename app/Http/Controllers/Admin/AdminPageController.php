@@ -343,4 +343,5 @@ class AdminPageController extends Controller
             ->pluck('aggregate', 'month_key')
             ->map(fn ($count) => (int) $count);
     }
+
 }

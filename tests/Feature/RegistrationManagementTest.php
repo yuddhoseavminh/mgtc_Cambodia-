@@ -11,6 +11,7 @@ use App\Models\PortalContent;
 use App\Models\Rank;
 use App\Models\TestTakingStaffDocumentRequirement;
 use App\Models\TestTakingStaffRank;
+use App\Models\TestTakingStaffRegistration;
 use App\Models\TeamStaff;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -74,6 +75,54 @@ class RegistrationManagementTest extends TestCase
             'is_active' => true,
             'must_change_password' => true,
         ], $attributes));
+    }
+
+    private function createTestTakingStaffRegistration(array $attributes = []): TestTakingStaffRegistration
+    {
+        $rankId = $attributes['test_taking_staff_rank_id']
+            ?? TestTakingStaffRank::query()->value('id')
+            ?? TestTakingStaffRank::query()->create([
+                'name_kh' => 'Seed Rank KH',
+                'name_en' => 'Seed Rank',
+                'sort_order' => 1,
+                'is_active' => true,
+            ])->id;
+
+        return TestTakingStaffRegistration::query()->create(array_merge([
+            'test_taking_staff_rank_id' => $rankId,
+            'name_kh' => 'Delete Target KH',
+            'name_latin' => 'Delete Target',
+            'id_number' => 'DEL-'.str_pad((string) random_int(1, 9999), 4, '0', STR_PAD_LEFT),
+            'date_of_birth' => '1990-01-01',
+            'military_service_day' => '2010-01-01',
+            'phone_number' => '012345678',
+            'avatar_path' => 'test-taking-staff/avatars/missing-avatar.jpg',
+            'avatar_original_name' => 'missing-avatar.jpg',
+            'submitted_at' => now(),
+        ], $attributes));
+    }
+
+    private function createLocalFileWithSize(string $relativePath, int $sizeBytes): void
+    {
+        $absolutePath = Storage::disk('local')->path($relativePath);
+        $directory = dirname($absolutePath);
+
+        if (! is_dir($directory)) {
+            mkdir($directory, 0777, true);
+        }
+
+        $handle = fopen($absolutePath, 'wb');
+
+        if ($handle === false) {
+            $this->fail('Unable to create file: '.$relativePath);
+        }
+
+        if ($sizeBytes > 0) {
+            fseek($handle, $sizeBytes - 1);
+            fwrite($handle, "\0");
+        }
+
+        fclose($handle);
     }
 
     public function test_public_registration_page_is_available(): void
@@ -698,6 +747,163 @@ class RegistrationManagementTest extends TestCase
         $response->assertUnprocessable()
             ->assertJsonValidationErrors('upload_total');
     }
+
+    public function test_admin_rejects_adding_test_taking_staff_document_when_total_upload_exceeds_50_mb(): void
+    {
+        Storage::fake('local');
+        $this->loginAsAdmin();
+
+        $registration = $this->createTestTakingStaffRegistration();
+        $requirement = TestTakingStaffDocumentRequirement::query()->first()
+            ?? TestTakingStaffDocumentRequirement::query()->create([
+                'name_kh' => 'Admin Total Limit Document KH',
+                'name_en' => 'Admin Total Limit Document',
+                'slug' => 'admin-total-limit-document',
+                'sort_order' => 1,
+                'is_active' => true,
+            ]);
+
+        $existingPath = 'test-taking-staff/documents/existing-large.pdf';
+        $this->createLocalFileWithSize($existingPath, 50000 * 1024);
+
+        $registration->documents()->create([
+            'test_taking_staff_document_requirement_id' => $requirement->id,
+            'file_path' => $existingPath,
+            'original_name' => 'existing-large.pdf',
+        ]);
+
+        $response = $this
+            ->withHeader('Accept', 'application/json')
+            ->post('/admin/test-taking-staff-registrations/'.$registration->id.'/documents', [
+                'test_taking_staff_document_requirement_id' => $requirement->id,
+                'document_file' => UploadedFile::fake()->create('new-document.pdf', 1500, 'application/pdf'),
+            ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('upload_total');
+
+        $this->assertSame(1, $registration->documents()->count());
+    }
+
+    public function test_admin_rejects_replacing_test_taking_staff_document_when_total_upload_exceeds_50_mb(): void
+    {
+        Storage::fake('local');
+        $this->loginAsAdmin();
+
+        $registration = $this->createTestTakingStaffRegistration();
+        $requirement = TestTakingStaffDocumentRequirement::query()->first()
+            ?? TestTakingStaffDocumentRequirement::query()->create([
+                'name_kh' => 'Admin Replace Total Limit KH',
+                'name_en' => 'Admin Replace Total Limit',
+                'slug' => 'admin-replace-total-limit',
+                'sort_order' => 2,
+                'is_active' => true,
+            ]);
+
+        $replacePath = 'test-taking-staff/documents/replace-me.pdf';
+        $otherPath = 'test-taking-staff/documents/other-existing.pdf';
+        $this->createLocalFileWithSize($replacePath, 20000 * 1024);
+        $this->createLocalFileWithSize($otherPath, 30000 * 1024);
+
+        $documentToReplace = $registration->documents()->create([
+            'test_taking_staff_document_requirement_id' => $requirement->id,
+            'file_path' => $replacePath,
+            'original_name' => 'replace-me.pdf',
+        ]);
+
+        $registration->documents()->create([
+            'test_taking_staff_document_requirement_id' => $requirement->id,
+            'file_path' => $otherPath,
+            'original_name' => 'other-existing.pdf',
+        ]);
+
+        $oldPath = $documentToReplace->file_path;
+
+        $response = $this
+            ->withHeader('Accept', 'application/json')
+            ->put('/admin/test-taking-staff-registrations/'.$registration->id.'/documents/'.$documentToReplace->id, [
+                'document_file' => UploadedFile::fake()->create('replacement.pdf', 22000, 'application/pdf'),
+            ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('upload_total');
+
+        $documentToReplace->refresh();
+        $this->assertSame($oldPath, $documentToReplace->file_path);
+    }
+
+    public function test_admin_can_delete_test_taking_staff_registration_via_json_request(): void
+    {
+        Storage::fake('local');
+        $this->loginAsAdmin();
+
+        $registration = $this->createTestTakingStaffRegistration();
+
+        $response = $this
+            ->withHeader('Accept', 'application/json')
+            ->delete('/admin/test-taking-staff-registrations/'.$registration->id);
+
+        $response->assertNoContent();
+
+        $this->assertDatabaseMissing('test_taking_staff_registrations', [
+            'id' => $registration->id,
+        ]);
+    }
+
+    public function test_register_staff_delete_permission_allows_deleting_registrations(): void
+    {
+        Storage::fake('local');
+
+        $user = User::query()->create([
+            'name' => 'Register Staff Delete Operator',
+            'email' => 'register.staff.delete@example.com',
+            'password' => 'Password@12345',
+            'is_admin' => false,
+            'role' => 'Management',
+            'permissions' => ['register-staff.delete'],
+        ]);
+
+        $registration = $this->createTestTakingStaffRegistration();
+
+        $response = $this
+            ->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->delete('/admin/test-taking-staff-registrations/'.$registration->id);
+
+        $response->assertNoContent();
+
+        $this->assertDatabaseMissing('test_taking_staff_registrations', [
+            'id' => $registration->id,
+        ]);
+    }
+
+    public function test_register_staff_read_only_permission_cannot_delete_registrations(): void
+    {
+        Storage::fake('local');
+
+        $user = User::query()->create([
+            'name' => 'Register Staff Viewer',
+            'email' => 'register.staff.viewer@example.com',
+            'password' => 'Password@12345',
+            'is_admin' => false,
+            'role' => 'Management',
+            'permissions' => ['register-staff.read'],
+        ]);
+
+        $registration = $this->createTestTakingStaffRegistration();
+
+        $response = $this
+            ->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->delete('/admin/test-taking-staff-registrations/'.$registration->id);
+
+        $response->assertForbidden();
+
+        $this->assertDatabaseHas('test_taking_staff_registrations', [
+            'id' => $registration->id,
+        ]);
+    }
+
     public function test_admin_login_page_is_available(): void
     {
         $response = $this->get('/admin/login');

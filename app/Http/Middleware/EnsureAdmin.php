@@ -152,8 +152,11 @@ class EnsureAdmin
             return 'test-taking-staff-documents.' . $action;
         }
 
-        if (str_starts_with($routeName, 'test-taking-staff-registrations.')) {
-            return 'register-staff.read';
+        if (
+            str_starts_with($routeName, 'test-taking-staff-registrations.')
+            || str_starts_with($routeName, 'admin.test-taking-staff-registrations.')
+        ) {
+            return 'register-staff.' . $action;
         }
 
         if ($routeName === 'team-staff.update-military-rank') {

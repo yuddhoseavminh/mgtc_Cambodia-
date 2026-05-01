@@ -78,7 +78,7 @@
                                     កែប្រែ
                                 </button>
                                 @if ($course->is_protected)
-                                    <span class="inline-flex shrink-0 items-center rounded-xl bg-slate-100 px-3 py-2 text-xs font-medium text-slate-500">
+                                    <span class="inline-flex shrink-0 items-center rounded-xl bg-sky-100 px-3 py-2 text-xs font-semibold text-sky-700">
                                         ការពារ
                                     </span>
                                 @else

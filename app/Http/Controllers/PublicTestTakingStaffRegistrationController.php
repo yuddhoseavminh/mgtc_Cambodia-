@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\SendTestTakingStaffRegistrationTelegramNotification;
 use App\Models\TestTakingStaffDocumentRequirement;
+use App\Models\TestTakingStaffRank;
 use App\Models\TestTakingStaffRegistration;
 use App\Support\UploadStorage;
 use Illuminate\Http\Client\Response as HttpResponse;
@@ -31,6 +32,12 @@ class PublicTestTakingStaffRegistrationController extends Controller
 
     public function store(Request $request): JsonResponse|Response
     {
+        if ($request->input('test_taking_staff_rank_id') === '__custom__') {
+            $request->merge([
+                'test_taking_staff_rank_id' => null,
+            ]);
+        }
+
         $documentRequirements = TestTakingStaffDocumentRequirement::query()
             ->select(['id', 'slug'])
             ->where('is_active', true)
@@ -41,7 +48,8 @@ class PublicTestTakingStaffRegistrationController extends Controller
             'name_kh' => ['required', 'string', 'max:255'],
             'name_latin' => ['required', 'string', 'max:255'],
             'id_number' => ['nullable', 'string', 'max:100', Rule::unique('test_taking_staff_registrations', 'id_number')],
-            'test_taking_staff_rank_id' => ['required', Rule::exists('test_taking_staff_ranks', 'id')],
+            'test_taking_staff_rank_id' => ['nullable', Rule::exists('test_taking_staff_ranks', 'id')],
+            'test_taking_staff_rank_name' => ['nullable', 'string', 'max:255', 'required_without:test_taking_staff_rank_id'],
             'date_of_birth' => ['required', 'date', 'before:today'],
             'military_service_day' => ['required', 'date', 'before_or_equal:today'],
             'phone_number' => ['required', 'regex:/^\+?[0-9]{8,15}$/'],
@@ -106,11 +114,13 @@ class PublicTestTakingStaffRegistrationController extends Controller
             }
 
             $registration = DB::transaction(function () use ($validated, $avatar, $storedAvatarPath, $documents) {
+                $resolvedRankId = $this->resolveTestTakingStaffRankId($validated);
+
                 $registration = TestTakingStaffRegistration::create([
                     'name_kh' => $validated['name_kh'],
                     'name_latin' => $validated['name_latin'],
                     'id_number' => $validated['id_number'] ?? null,
-                    'test_taking_staff_rank_id' => $validated['test_taking_staff_rank_id'],
+                    'test_taking_staff_rank_id' => $resolvedRankId,
                     'date_of_birth' => $validated['date_of_birth'],
                     'military_service_day' => $validated['military_service_day'],
                     'phone_number' => $validated['phone_number'],
@@ -152,6 +162,48 @@ class PublicTestTakingStaffRegistrationController extends Controller
         $request->session()->flash('status', self::SUCCESS_DESCRIPTION);
 
         return response()->view('public.test-taking-staff-register', $this->successPageData(), 201);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveTestTakingStaffRankId(array $validated): int
+    {
+        $selectedRankId = $validated['test_taking_staff_rank_id'] ?? null;
+
+        if (filled($selectedRankId)) {
+            return (int) $selectedRankId;
+        }
+
+        $newRankName = trim((string) ($validated['test_taking_staff_rank_name'] ?? ''));
+
+        if ($newRankName === '') {
+            throw ValidationException::withMessages([
+                'test_taking_staff_rank_id' => 'Please select a rank or provide a new one.',
+            ]);
+        }
+
+        $existingRank = TestTakingStaffRank::query()
+            ->where('name_kh', $newRankName)
+            ->first();
+
+        if ($existingRank) {
+            if (! $existingRank->is_active) {
+                $existingRank->forceFill(['is_active' => true])->save();
+            }
+
+            return (int) $existingRank->id;
+        }
+
+        $nextSortOrder = ((int) TestTakingStaffRank::query()->max('sort_order')) + 1;
+        $rank = TestTakingStaffRank::query()->create([
+            'name_kh' => $newRankName,
+            'name_en' => $newRankName,
+            'sort_order' => max(1, $nextSortOrder),
+            'is_active' => true,
+        ]);
+
+        return (int) $rank->id;
     }
 
     private function storeAvatar(?UploadedFile $avatar, string $folder): string
@@ -398,12 +450,21 @@ class PublicTestTakingStaffRegistrationController extends Controller
      */
     private function preferredTelegramAttachments(TestTakingStaffRegistration $registration): Collection
     {
-        return $this->selectedTelegramDocuments($registration)
+        $attachments = $this->selectedTelegramDocuments($registration)
             ->filter(fn ($document) => filled($document->file_path) && UploadStorage::exists($document->file_path))
             ->map(fn ($document) => [
                 'path' => (string) $document->file_path,
                 'original_name' => (string) ($document->original_name ?: basename((string) $document->file_path)),
-            ])
+            ]);
+
+        if (filled($registration->avatar_path) && UploadStorage::exists($registration->avatar_path)) {
+            $attachments = collect([[
+                'path' => (string) $registration->avatar_path,
+                'original_name' => (string) ($registration->avatar_original_name ?: basename((string) $registration->avatar_path)),
+            ]])->concat($attachments);
+        }
+
+        return $attachments
             ->unique('path')
             ->values();
     }
@@ -421,9 +482,9 @@ class PublicTestTakingStaffRegistrationController extends Controller
         ?string $caption = null
     ): HttpResponse {
         $storedPath = (string) ($attachment['path'] ?? '');
-        $binary = $this->readUploadBinary($storedPath);
+        $resource = $this->openUploadReadStream($storedPath);
 
-        if ($binary === null) {
+        if (! is_resource($resource)) {
             Log::warning('Telegram test-taking staff attachment missing on disk.', [
                 'registration_id' => $registration->id,
                 'file_path' => $attachment['path'],
@@ -442,9 +503,13 @@ class PublicTestTakingStaffRegistrationController extends Controller
             $payload['caption'] = Str::limit($captionText, 900, '...');
         }
 
-        return $this->telegramRequest($forceWithoutVerifying)
-            ->attach('document', $binary, $filename)
-            ->post("https://api.telegram.org/bot{$botToken}/sendDocument", $this->telegramPayload($payload));
+        try {
+            return $this->telegramRequest($forceWithoutVerifying)
+                ->attach('document', $resource, $filename)
+                ->post("https://api.telegram.org/bot{$botToken}/sendDocument", $this->telegramPayload($payload));
+        } finally {
+            $this->closeUploadReadStream($resource);
+        }
     }
 
     private function sendTelegramTextMessage(
@@ -519,13 +584,14 @@ class PublicTestTakingStaffRegistrationController extends Controller
         foreach ($attachments->chunk(10) as $chunk) {
             $request = $this->telegramRequest($forceWithoutVerifying);
             $media = [];
+            $resources = [];
             $validIndex = 0;
 
             foreach ($chunk as $attachment) {
                 $storedPath = (string) ($attachment['path'] ?? '');
-                $binary = $this->readUploadBinary($storedPath);
+                $resource = $this->openUploadReadStream($storedPath);
 
-                if ($binary === null) {
+                if (! is_resource($resource)) {
                     Log::warning('Telegram test-taking staff attachment missing on disk.', [
                         'registration_id' => $registration->id,
                         'file_path' => $attachment['path'],
@@ -534,7 +600,7 @@ class PublicTestTakingStaffRegistrationController extends Controller
                 }
 
                 $attachName = 'document_'.$validIndex;
-                $request = $request->attach($attachName, $binary, ($attachment['original_name'] ?? null) ?: basename($storedPath));
+                $request = $request->attach($attachName, $resource, ($attachment['original_name'] ?? null) ?: basename($storedPath));
 
                 $mediaItem = [
                     'type' => 'document',
@@ -547,6 +613,7 @@ class PublicTestTakingStaffRegistrationController extends Controller
                 }
 
                 $media[] = $mediaItem;
+                $resources[] = $resource;
                 $validIndex++;
             }
 
@@ -554,13 +621,19 @@ class PublicTestTakingStaffRegistrationController extends Controller
                 continue;
             }
 
-            $response = $request->post(
-                "https://api.telegram.org/bot{$botToken}/sendMediaGroup",
-                $this->telegramPayload([
-                    'chat_id' => $chatId,
-                    'media' => json_encode($media, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                ])
-            );
+            try {
+                $response = $request->post(
+                    "https://api.telegram.org/bot{$botToken}/sendMediaGroup",
+                    $this->telegramPayload([
+                        'chat_id' => $chatId,
+                        'media' => json_encode($media, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    ])
+                );
+            } finally {
+                foreach ($resources as $resource) {
+                    $this->closeUploadReadStream($resource);
+                }
+            }
 
             $lastResponse = $response;
 
@@ -783,16 +856,30 @@ class PublicTestTakingStaffRegistrationController extends Controller
         return 0;
     }
 
-    private function readUploadBinary(?string $path): ?string
+    /**
+     * @return resource|null
+     */
+    private function openUploadReadStream(?string $path)
     {
         if (! filled($path) || ! UploadStorage::exists($path)) {
             return null;
         }
 
+        $stream = UploadStorage::readDisk($path)->readStream($path);
+
+        return is_resource($stream) ? $stream : null;
+    }
+
+    private function closeUploadReadStream(mixed $stream): void
+    {
+        if (! is_resource($stream)) {
+            return;
+        }
+
         try {
-            return UploadStorage::readDisk($path)->get($path);
+            fclose($stream);
         } catch (\Throwable) {
-            return null;
+            // The HTTP client may already close the stream. Ignore close failures.
         }
     }
 

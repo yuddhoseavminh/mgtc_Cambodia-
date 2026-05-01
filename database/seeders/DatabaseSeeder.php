@@ -83,12 +83,12 @@ class DatabaseSeeder extends Seeder
         );
 
         Course::query()->updateOrCreate(
-            ['name' => Course::PROTECTED_DEFAULT_COURSE_NAME],
+            ['name' => 'វគ្គសិក្សា'],
             [
                 'description' => 'Default course used by the public registration form.',
                 'duration' => '3 months',
                 'is_active' => true,
-                'is_protected' => true,
+                'is_protected' => false,
             ],
         );
 

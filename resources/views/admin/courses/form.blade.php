@@ -97,6 +97,25 @@
         <p class="mt-1.5 hidden text-sm text-rose-500" data-field-error="is_active"></p>
     </div>
 
+    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+        <input type="hidden" name="is_protected" value="0">
+        <label for="course-form-is-protected" class="flex cursor-pointer items-start gap-3">
+            <input
+                type="checkbox"
+                name="is_protected"
+                id="course-form-is-protected"
+                value="1"
+                @checked((string) old('is_protected', (int) $course->is_protected) === '1')
+                class="mt-1 h-4 w-4 rounded border-slate-300 text-[#356AE6] focus:ring-[#356AE6]"
+            >
+            <span>
+                <span class="block text-sm font-semibold text-slate-900">Protect This Course</span>
+                <span class="mt-1 block text-sm leading-6 text-slate-500">Protected courses cannot be deleted from the admin list.</span>
+            </span>
+        </label>
+        <p class="mt-1.5 hidden text-sm text-rose-500" data-field-error="is_protected"></p>
+    </div>
+
     {{-- Actions --}}
     <div class="flex items-center justify-end gap-3 border-t border-slate-100 pt-5">
         <button

@@ -5,6 +5,9 @@
         $bannerKhmerTitle = $portalContent?->test_taking_staff_page_title ?: 'សាលាហ្វឹកហ្វឺនយោធា';
         $bannerKhmerSubtitle = $portalContent?->test_taking_staff_page_subtitle ?: 'ទម្រង់ចុះឈ្មោះបុគ្គលិកសាកល្បង';
         $bannerKhmerDescription = $portalContent?->test_taking_staff_page_description ?: 'សូមបំពេញព័ត៌មានរបស់បុគ្គលិកសាកល្បងឲ្យបានត្រឹមត្រូវ ដើម្បីឲ្យក្រុមការងារត្រួតពិនិត្យបានងាយស្រួល។';
+        $currentRankId = old('test_taking_staff_rank_id');
+        $currentRankName = old('test_taking_staff_rank_name');
+        $usesCustomRank = old('test_taking_staff_rank_id') === '__custom__' || trim((string) old('test_taking_staff_rank_name', '')) !== '';
     @endphp
 
     @if (session('status'))
@@ -87,13 +90,40 @@
 
                             <div>
                                 <label class="form-label">* ឋានន្តរសក្តិ</label>
-                                <select name="test_taking_staff_rank_id" class="form-input">
-                                    <option value="">សូមជ្រើសរើសឋានន្តរសក្តិ</option>
-                                    @foreach ($ranks as $rank)
-                                        <option value="{{ $rank->id }}" @selected((string) old('test_taking_staff_rank_id') === (string) $rank->id)>{{ $rank->name_kh }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="relative">
+                                    <select
+                                        id="test_taking_staff_rank_select"
+                                        name="{{ $usesCustomRank ? '' : 'test_taking_staff_rank_id' }}"
+                                        class="form-input h-12 w-full min-w-0 bg-white {{ $usesCustomRank ? 'hidden' : '' }}"
+                                        onchange="if(this.value === '__custom__') { this.classList.add('hidden'); this.name = ''; document.getElementById('test_taking_staff_rank_input').classList.remove('hidden'); document.getElementById('test_taking_staff_rank_input').name = 'test_taking_staff_rank_name'; document.getElementById('test_taking_staff_rank_input').focus(); document.getElementById('test_taking_staff_rank_cancel_btn').classList.remove('hidden'); }"
+                                    >
+                                        <option value="">សូមជ្រើសរើសឋានន្តរសក្តិ</option>
+                                        @foreach ($ranks as $rank)
+                                            <option value="{{ $rank->id }}" @selected(! $usesCustomRank && (string) $currentRankId === (string) $rank->id)>{{ $rank->name_kh }}</option>
+                                        @endforeach
+                                        <option value="__custom__" class="font-semibold text-[#356AE6]" @selected($usesCustomRank)>+បញ្ចូលថ្មី...</option>
+                                    </select>
+                                    <input
+                                        type="text"
+                                        id="test_taking_staff_rank_input"
+                                        name="{{ $usesCustomRank ? 'test_taking_staff_rank_name' : '' }}"
+                                        value="{{ $usesCustomRank ? $currentRankName : '' }}"
+                                        class="form-input h-12 w-full min-w-0 bg-white pr-10 {{ $usesCustomRank ? '' : 'hidden' }}"
+                                        placeholder="បញ្ចូលឋានន្តរសក្តិថ្មី..."
+                                    >
+                                    <button
+                                        type="button"
+                                        id="test_taking_staff_rank_cancel_btn"
+                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600 {{ $usesCustomRank ? '' : 'hidden' }}"
+                                        onclick="document.getElementById('test_taking_staff_rank_input').classList.add('hidden'); document.getElementById('test_taking_staff_rank_input').name = ''; document.getElementById('test_taking_staff_rank_input').value = ''; document.getElementById('test_taking_staff_rank_select').classList.remove('hidden'); document.getElementById('test_taking_staff_rank_select').name = 'test_taking_staff_rank_id'; document.getElementById('test_taking_staff_rank_select').value = ''; this.classList.add('hidden');"
+                                        title="បោះបង់ការបញ្ចូលថ្មី និងជ្រើសរើសពីបញ្ជី"
+                                    >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+                                <p class="mt-2 text-sm text-slate-500">ប្រសិនបើមិនមានក្នុងបញ្ជី អ្នកអាចបញ្ចូលឋានន្តរសក្តិថ្មីបាន។</p>
                                 @include('partials.field-error', ['name' => 'test_taking_staff_rank_id'])
+                                @include('partials.field-error', ['name' => 'test_taking_staff_rank_name'])
                             </div>
 
                             <div>

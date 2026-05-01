@@ -7,12 +7,22 @@ use App\Models\TestTakingStaffRegistration;
 use App\Models\TestTakingStaffRegistrationDocument;
 use App\Support\UploadStorage;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminTestTakingStaffRegistrationController extends Controller
 {
+    private const MAX_SINGLE_FILE_UPLOAD_KILOBYTES = 51200;
+    private const MAX_TOTAL_UPLOAD_BYTES = 52428800;
+    private const TOTAL_UPLOAD_ERROR = 'Total upload size is too large. Keep all documents at or below 50 MB in total.';
+
     public function avatar(TestTakingStaffRegistration $testTakingStaffRegistration): StreamedResponse
     {
         abort_unless($testTakingStaffRegistration->hasStoredAvatar(), 404);
@@ -62,67 +72,91 @@ class AdminTestTakingStaffRegistrationController extends Controller
     }
 
     public function updateDocument(
-        \Illuminate\Http\Request $request,
+        Request $request,
         TestTakingStaffRegistration $testTakingStaffRegistration,
         TestTakingStaffRegistrationDocument $document
-    ): \Illuminate\Http\RedirectResponse {
+    ): JsonResponse|RedirectResponse {
         abort_unless(
             $document->test_taking_staff_registration_id === $testTakingStaffRegistration->id,
             404
         );
 
         $request->validate([
-            'document_file' => ['required', 'file', 'max:51200', 'mimes:pdf,jpg,jpeg,png,doc,docx,webp'],
+            'document_file' => ['required', 'file', 'max:'.self::MAX_SINGLE_FILE_UPLOAD_KILOBYTES, 'mimes:pdf,jpg,jpeg,png,doc,docx,webp'],
         ]);
-
-        if ($document->file_path) {
-            UploadStorage::delete($document->file_path);
-        }
 
         $file = $request->file('document_file');
+        $this->ensureRegistrationDocumentTotalUploadLimit($testTakingStaffRegistration, $file, $document);
+        $oldPath = $document->file_path;
+        $newPath = UploadStorage::store($file, 'test-taking-staff/documents');
 
         $document->update([
-            'file_path' => UploadStorage::store($file, 'test-taking-staff/documents'),
+            'file_path' => $newPath,
             'original_name' => $file->getClientOriginalName(),
         ]);
+
+        if ($oldPath && $oldPath !== $newPath) {
+            UploadStorage::delete($oldPath);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Document updated successfully.',
+            ]);
+        }
 
         return back()->with('status', 'បានកែប្រែឯកសារដោយជោគជ័យ។');
     }
 
     public function destroyDocument(
+        Request $request,
         TestTakingStaffRegistration $testTakingStaffRegistration,
         TestTakingStaffRegistrationDocument $document
-    ): \Illuminate\Http\RedirectResponse {
+    ): JsonResponse|RedirectResponse {
         abort_unless(
             $document->test_taking_staff_registration_id === $testTakingStaffRegistration->id,
             404
         );
 
-        if ($document->file_path) {
-            UploadStorage::delete($document->file_path);
-        }
+        $filePath = $document->file_path;
 
         $document->delete();
+
+        if ($filePath) {
+            UploadStorage::delete($filePath);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([], 204);
+        }
 
         return back()->with('status', 'បានលុបឯកសារដោយជោគជ័យ។');
     }
 
     public function storeDocument(
-        \Illuminate\Http\Request $request,
+        Request $request,
         TestTakingStaffRegistration $testTakingStaffRegistration
-    ): \Illuminate\Http\RedirectResponse {
+    ): JsonResponse|RedirectResponse {
         $request->validate([
             'test_taking_staff_document_requirement_id' => ['required', 'exists:test_taking_staff_document_requirements,id'],
-            'document_file' => ['required', 'file', 'max:51200', 'mimes:pdf,jpg,jpeg,png,doc,docx,webp'],
+            'document_file' => ['required', 'file', 'max:'.self::MAX_SINGLE_FILE_UPLOAD_KILOBYTES, 'mimes:pdf,jpg,jpeg,png,doc,docx,webp'],
         ]);
 
         $file = $request->file('document_file');
+        $this->ensureRegistrationDocumentTotalUploadLimit($testTakingStaffRegistration, $file);
 
-        $testTakingStaffRegistration->documents()->create([
+        $document = $testTakingStaffRegistration->documents()->create([
             'test_taking_staff_document_requirement_id' => $request->test_taking_staff_document_requirement_id,
             'file_path' => UploadStorage::store($file, 'test-taking-staff/documents'),
             'original_name' => $file->getClientOriginalName(),
         ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Document added successfully.',
+                'document_id' => $document->id,
+            ], 201);
+        }
 
         return back()->with('status', 'បានបន្ថែមឯកសារដោយជោគជ័យ។');
     }
@@ -148,7 +182,7 @@ class AdminTestTakingStaffRegistrationController extends Controller
         ]);
     }
 
-    public function update(\Illuminate\Http\Request $request, TestTakingStaffRegistration $testTakingStaffRegistration): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, TestTakingStaffRegistration $testTakingStaffRegistration): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
             'test_taking_staff_rank_id' => ['nullable', 'exists:test_taking_staff_ranks,id'],
@@ -190,24 +224,39 @@ class AdminTestTakingStaffRegistrationController extends Controller
             UploadStorage::delete($avatarToDelete);
         }
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Registration updated successfully.',
+                'id' => $testTakingStaffRegistration->id,
+            ]);
+        }
+
         return redirect()
             ->route('admin.home', ['section' => 'register-staff'])
             ->with('status', 'បានកែប្រែព័ត៌មានដោយជោគជ័យ។');
     }
 
-    public function destroy(TestTakingStaffRegistration $testTakingStaffRegistration): \Illuminate\Http\RedirectResponse
+    public function destroy(Request $request, TestTakingStaffRegistration $testTakingStaffRegistration): JsonResponse|RedirectResponse
     {
-        if ($testTakingStaffRegistration->hasStoredAvatar()) {
-            UploadStorage::delete($testTakingStaffRegistration->avatar_path);
-        }
+        $testTakingStaffRegistration->loadMissing('documents');
 
-        foreach ($testTakingStaffRegistration->documents as $doc) {
-            if ($doc->file_path) {
-                UploadStorage::delete($doc->file_path);
-            }
-        }
+        $paths = array_values(array_filter([
+            $testTakingStaffRegistration->avatar_path,
+            ...$testTakingStaffRegistration->documents
+                ->pluck('file_path')
+                ->filter()
+                ->all(),
+        ]));
 
-        $testTakingStaffRegistration->delete();
+        DB::transaction(function () use ($testTakingStaffRegistration) {
+            $testTakingStaffRegistration->delete();
+        });
+
+        UploadStorage::delete($paths);
+
+        if ($request->expectsJson()) {
+            return response()->json([], 204);
+        }
 
         return redirect()
             ->route('admin.home', ['section' => 'register-staff'])
@@ -258,6 +307,33 @@ class AdminTestTakingStaffRegistrationController extends Controller
             'registration' => $registration,
             'document' => $document ?? new TestTakingStaffRegistrationDocument(['id' => $documentId]),
             'mode' => $mode,
+        ]);
+    }
+
+    private function ensureRegistrationDocumentTotalUploadLimit(
+        TestTakingStaffRegistration $registration,
+        UploadedFile $incomingFile,
+        ?TestTakingStaffRegistrationDocument $replacingDocument = null
+    ): void {
+        $incomingSize = (int) ($incomingFile->getSize() ?: 0);
+
+        $currentStoredSize = $registration->documents()
+            ->select(['id', 'file_path'])
+            ->get()
+            ->sum(function (TestTakingStaffRegistrationDocument $document) use ($replacingDocument): int {
+                if ($replacingDocument && $document->id === $replacingDocument->id) {
+                    return 0;
+                }
+
+                return (int) (UploadStorage::size($document->file_path) ?? 0);
+            });
+
+        if (($currentStoredSize + $incomingSize) <= self::MAX_TOTAL_UPLOAD_BYTES) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'upload_total' => self::TOTAL_UPLOAD_ERROR,
         ]);
     }
 }
