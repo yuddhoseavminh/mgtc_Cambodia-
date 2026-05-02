@@ -14,9 +14,31 @@
             'Female' => 'ស្រី',
             'Other' => 'ផ្សេងទៀត',
         ];
-        $existingDocuments = collect($teamStaff->documents ?? [])->values();
+        $existingDocuments = collect($teamStaff->documents ?? [])
+            ->map(function ($document): array {
+                if (is_array($document)) {
+                    return $document;
+                }
+
+                if (is_object($document)) {
+                    return (array) $document;
+                }
+
+                if (filled($document)) {
+                    $path = (string) $document;
+
+                    return [
+                        'path' => $path,
+                        'original_name' => basename($path),
+                    ];
+                }
+
+                return [];
+            })
+            ->filter(fn (array $document) => $document !== [])
+            ->values();
         $indexedDocuments = $existingDocuments
-            ->map(fn ($document, $index) => [...$document, 'document_index' => $index])
+            ->map(fn (array $document, $index) => array_merge($document, ['document_index' => $index]))
             ->values();
         $documentRequirements = collect($documentRequirements ?? [])->values();
         $documentsByRequirementSlug = $indexedDocuments
@@ -266,8 +288,10 @@
 
                                             <div>
                                                 <label class="form-label">មុខតំណែង</label>
-                                                @php($currentPosition = old('position', $teamStaff->position))
-                                                @php($isCustomPosition = filled($currentPosition) && ! $positionSuggestions->contains($currentPosition))
+                                                @php
+                                                    $currentPosition = old('position', $teamStaff->position);
+                                                    $isCustomPosition = filled($currentPosition) && ! $positionSuggestions->contains($currentPosition);
+                                                @endphp
                                                 <div class="relative">
                                                     <select 
                                                         id="position_select" 
@@ -304,8 +328,10 @@
 
                                             <div>
                                                 <label class="form-label">តួនាទី</label>
-                                                @php($currentRole = old('role', $teamStaff->role))
-                                                @php($isCustomRole = filled($currentRole) && ! in_array($currentRole, $roleOptions, true))
+                                                @php
+                                                    $currentRole = old('role', $teamStaff->role);
+                                                    $isCustomRole = filled($currentRole) && ! in_array($currentRole, $roleOptions, true);
+                                                @endphp
                                                 <div class="relative">
                                                     <select 
                                                         id="role_select" 
@@ -386,7 +412,9 @@
                                     @if ($documentRequirements->isNotEmpty())
                                         <div class="grid gap-5 md:grid-cols-2">
                                             @foreach ($documentRequirements as $documentRequirement)
-                                                @php($requirementDocuments = $documentsByRequirementSlug->get($documentRequirement->slug, collect())->values())
+                                                @php
+                                                    $requirementDocuments = $documentsByRequirementSlug->get($documentRequirement->slug, collect())->values();
+                                                @endphp
                                                 <div class="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4">
                                                     <div class="flex items-start justify-between gap-3">
                                                         <div class="min-w-0">

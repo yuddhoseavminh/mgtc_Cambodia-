@@ -270,16 +270,21 @@ class AdminTeamStaffController extends Controller
     {
         $documents = collect($teamStaff->documents ?? [])->values();
         $document = $documents->get($documentIndex);
-        $path = is_array($document) ? $this->documentPath($document) : null;
+        $path = is_array($document)
+            ? $this->documentPath($document)
+            : (filled($document) ? (string) $document : null);
+        $documentPayload = is_array($document)
+            ? $document
+            : ['original_name' => filled($document) ? basename((string) $document) : null];
 
-        abort_unless($document && $path && UploadStorage::exists($path), 404);
+        abort_unless($path && UploadStorage::exists($path), 404);
 
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
         $disk = UploadStorage::readDisk($path);
 
         return $disk->response(
             $path,
-            $this->documentOriginalName($document, $path),
+            $this->documentOriginalName($documentPayload, $path),
         );
     }
 
@@ -287,14 +292,19 @@ class AdminTeamStaffController extends Controller
     {
         $documents = collect($teamStaff->documents ?? [])->values();
         $document = $documents->get($documentIndex);
-        $path = is_array($document) ? $this->documentPath($document) : null;
+        $path = is_array($document)
+            ? $this->documentPath($document)
+            : (filled($document) ? (string) $document : null);
+        $documentPayload = is_array($document)
+            ? $document
+            : ['original_name' => filled($document) ? basename((string) $document) : null];
 
-        abort_unless($document && $path && UploadStorage::exists($path), 404);
+        abort_unless($path && UploadStorage::exists($path), 404);
 
         /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
         $disk = UploadStorage::readDisk($path);
 
-        return $disk->download($path, $this->documentOriginalName($document, $path));
+        return $disk->download($path, $this->documentOriginalName($documentPayload, $path));
     }
 
     public function destroyDocument(
@@ -307,14 +317,16 @@ class AdminTeamStaffController extends Controller
 
         abort_unless($document, 404);
 
-        $path = is_array($document) ? $this->documentPath($document) : null;
+        $path = is_array($document)
+            ? $this->documentPath($document)
+            : (filled($document) ? (string) $document : null);
         if ($path) {
             UploadStorage::delete($path);
         }
 
         $teamStaff->update([
             'documents' => $documents
-                ->reject(fn (array $entry, int $index) => $index === $documentIndex)
+                ->reject(fn ($entry, int $index) => $index === $documentIndex)
                 ->values()
                 ->all(),
         ]);
@@ -337,6 +349,11 @@ class AdminTeamStaffController extends Controller
         $document = $documents->get($documentIndex);
 
         abort_unless($document, 404);
+        if (! is_array($document)) {
+            return back()->withErrors([
+                'documents' => 'Unsupported legacy document entry.',
+            ]);
+        }
 
         $uploader = strtolower((string) ($document['uploaded_by'] ?? ''));
         if ($uploader !== 'staff') {
@@ -457,21 +474,24 @@ class AdminTeamStaffController extends Controller
     ): RedirectResponse {
         $documents = collect($teamStaff->documents ?? [])->values();
         $documentIndex = $documents->search(
-            fn (array $document) => ($document['requirement_slug'] ?? null) === $documentRequirement->slug
+            fn ($document) => is_array($document)
+                && ($document['requirement_slug'] ?? null) === $documentRequirement->slug
         );
 
         abort_unless($documentIndex !== false, 404);
 
         $document = $documents->get($documentIndex);
 
-        $path = is_array($document) ? $this->documentPath($document) : null;
+        $path = is_array($document)
+            ? $this->documentPath($document)
+            : (filled($document) ? (string) $document : null);
         if ($path) {
             UploadStorage::delete($path);
         }
 
         $teamStaff->update([
             'documents' => $documents
-                ->reject(fn (array $entry, int $index) => $index === $documentIndex)
+                ->reject(fn ($entry, int $index) => $index === $documentIndex)
                 ->values()
                 ->all(),
         ]);
@@ -643,7 +663,9 @@ class AdminTeamStaffController extends Controller
     private function deleteStoredDocuments(array $documents): void
     {
         collect($documents)
-            ->map(fn (array $document) => $this->documentPath($document))
+            ->map(fn ($document) => is_array($document)
+                ? $this->documentPath($document)
+                : (filled($document) ? (string) $document : null))
             ->filter()
             ->each(fn ($path) => UploadStorage::delete($path));
     }
@@ -756,7 +778,8 @@ class AdminTeamStaffController extends Controller
         TeamStaffDocumentRequirement $documentRequirement,
     ): ?array {
         $document = collect($teamStaff->documents ?? [])
-            ->first(fn (array $entry) => ($entry['requirement_slug'] ?? null) === $documentRequirement->slug);
+            ->first(fn ($entry) => is_array($entry)
+                && ($entry['requirement_slug'] ?? null) === $documentRequirement->slug);
 
         $path = is_array($document) ? $this->documentPath($document) : null;
 
