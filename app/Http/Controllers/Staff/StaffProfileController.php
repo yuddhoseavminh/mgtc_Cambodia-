@@ -220,6 +220,7 @@ class StaffProfileController extends Controller
             $staff->dob,
             $staff->date_of_enlistment,
             $staff->pob,
+            $staff->current_place,
             $staff->training_code,
             $staff->leader_ref,
             $staff->origin_ref,

@@ -36,6 +36,8 @@
             ['label' => 'លេខទូរស័ព្ទ', 'value' => $staff->phone_number],
             ['label' => 'ថ្ងៃខែឆ្នាំកំណើត', 'value' => optional($staff->dob)?->khFormat('d/m/Y')],
             ['label' => 'ថ្ងៃចូលបម្រើកងទ័ព', 'value' => optional($staff->date_of_enlistment)?->khFormat('d/m/Y')],
+            ['label' => 'ទីកន្លែងកំណើត', 'value' => $staff->pob],
+            ['label' => 'ទីកន្លែងបច្ចុប្បន្ន', 'value' => $staff->current_place],
         ];
 
         $identityFieldRows = collect($identityFields)

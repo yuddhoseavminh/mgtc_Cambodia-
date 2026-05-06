@@ -50,9 +50,8 @@
         $previewIdNumber = old('id_number', $credentialPreview['password'] ?? $teamStaff->id_number);
         $previewUsername = $credentialPreview['username']
             ?? \App\Models\TeamStaff::usernameBase((string) old('name_latin', $teamStaff->name_latin));
-        $provinceOptions = array_values(config('military-registration.province_labels', []));
-        $provinceLabels = config('military-registration.province_labels', []);
-        $currentProvince = old('pob', $provinceLabels[$teamStaff->pob] ?? $teamStaff->pob);
+        $currentProvince = old('pob', $teamStaff->pob);
+        $currentPlace = old('current_place', $teamStaff->current_place);
         $previewableExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'];
         $imagePreviewableExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
     @endphp
@@ -258,14 +257,29 @@
                                             </div>
 
                                             <div>
-                                                <label class="form-label">ទីកន្លែងកំណើត</label>
-                                                <select name="pob" class="form-input bg-slate-50">
-                                                    <option value="">ជ្រើសរើសខេត្ត/រាជធានី</option>
-                                                    @foreach ($provinceOptions as $provinceOption)
-                                                        <option value="{{ $provinceOption }}" @selected($currentProvince === $provinceOption)>{{ $provinceOption }}</option>
-                                                    @endforeach
-                                                </select>
+                                                <label class="form-label">ទីកន្លែងកំណើត <span class="text-rose-500">*</span></label>
+                                                <input
+                                                    type="text"
+                                                    name="pob"
+                                                    value="{{ $currentProvince }}"
+                                                    class="form-input bg-slate-50"
+                                                    placeholder="( ភូមិ ​ឃុំ/សង្កាត់ ​ស្រុក/ខណ្ឌ ​ខេត្ត/ក្រុង )"
+                                                    required
+                                                >
                                                 @include('partials.field-error', ['name' => 'pob'])
+                                            </div>
+
+                                            <div>
+                                                <label class="form-label">ទីកន្លែងបច្ចុប្បន្ន <span class="text-rose-500">*</span></label>
+                                                <input
+                                                    type="text"
+                                                    name="current_place"
+                                                    value="{{ $currentPlace }}"
+                                                    class="form-input bg-slate-50"
+                                                    placeholder="( ភូមិ ​ឃុំ/សង្កាត់ ​ស្រុក/ខណ្ឌ ​ខេត្ត/ក្រុង )"
+                                                    required
+                                                >
+                                                @include('partials.field-error', ['name' => 'current_place'])
                                             </div>
 
                                             {{-- <div class="md:col-span-2 grid grid-cols-3 gap-4">
@@ -853,4 +867,3 @@
         </div>
     </div>
 @endsection
-

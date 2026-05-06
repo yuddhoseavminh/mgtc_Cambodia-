@@ -514,6 +514,7 @@ class AdminTeamStaffController extends Controller
             'role' => trim((string) $request->input('role')),
             'phone_number' => $this->normalizePhoneNumber($request->input('phone_number')),
             'pob' => trim((string) $request->input('pob')),
+            'current_place' => trim((string) $request->input('current_place')),
         ]);
 
         return $request->validate([
@@ -528,7 +529,8 @@ class AdminTeamStaffController extends Controller
             'phone_number' => ['required', 'regex:/^\+?[0-9]{8,15}$/'],
             'dob' => ['nullable', 'date'],
             'date_of_enlistment' => ['nullable', 'date', 'before_or_equal:today'],
-            'pob' => ['nullable', Rule::in(array_values(config('military-registration.province_labels', [])))],
+            'pob' => ['required', 'string', 'max:255'],
+            'current_place' => ['required', 'string', 'max:255'],
             'training_code' => ['nullable', 'string', 'max:50'],
             'leader_ref' => ['nullable', 'string', 'max:50'],
             'origin_ref' => ['nullable', 'string', 'max:50'],
@@ -539,6 +541,9 @@ class AdminTeamStaffController extends Controller
             'avatar_image.max' => 'រូបភាពប្រវត្តិរូបត្រូវតែមានទំហំមិនលើស 5MB។',
             'phone_number.regex' => 'លេខទូរស័ព្ទត្រូវមានតែខ្ទង់លេខពី 8 ដល់ 15 ខ្ទង់ប៉ុណ្ណោះ។',
             'role.max' => 'តួនាទីត្រូវមានអតិបរមា 50 តួអក្សរ។',
+            'id_number.unique' => 'អត្តលេខនេះមានរួចហើយ។',
+            'pob.required' => 'Please fill in place of birth.',
+            'current_place.required' => 'Please fill in current place.',
         ]);
     }
 
@@ -806,4 +811,3 @@ class AdminTeamStaffController extends Controller
         return filled($originalName) ? (string) $originalName : basename($path);
     }
 }
-

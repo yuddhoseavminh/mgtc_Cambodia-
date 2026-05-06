@@ -977,6 +977,8 @@ class RegistrationManagementTest extends TestCase
                 'position' => 'Operations Officer',
                 'role' => 'Staff',
                 'phone_number' => '012345678',
+                'pob' => 'Phnom Penh',
+                'current_place' => 'Kandal',
             ]);
 
         $response->assertCreated()
@@ -986,6 +988,65 @@ class RegistrationManagementTest extends TestCase
             'name_latin' => 'Yuddho Seavminh',
             'username' => 'Yuddho Seavminh',
         ]);
+    }
+
+    public function test_team_staff_requires_place_fields(): void
+    {
+        Storage::fake('local');
+        $this->loginAsAdmin();
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('Accept', 'application/json')
+            ->withHeader('X-CSRF-TOKEN', $this->csrfToken())
+            ->post('/admin/team-staff', [
+                '_token' => $this->csrfToken(),
+                'military_rank' => 'Captain',
+                'name_kh' => 'Yuddho KH',
+                'name_latin' => 'Yuddho Seavminh',
+                'id_number' => '058256',
+                'avatar_image' => UploadedFile::fake()->image('avatar.png', 300, 300),
+                'gender' => 'Male',
+                'position' => 'Operations Officer',
+                'role' => 'Staff',
+                'phone_number' => '012345678',
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['pob', 'current_place']);
+    }
+
+    public function test_team_staff_id_number_must_be_unique(): void
+    {
+        Storage::fake('local');
+        $this->loginAsAdmin();
+        $this->createStaffAccount([
+            'sequence_no' => 9,
+            'id_number' => 'DUP-1001',
+            'username' => 'Existing User',
+        ]);
+
+        $response = $this
+            ->withSession(['_token' => $this->csrfToken()])
+            ->withHeader('Accept', 'application/json')
+            ->withHeader('X-CSRF-TOKEN', $this->csrfToken())
+            ->post('/admin/team-staff', [
+                '_token' => $this->csrfToken(),
+                'military_rank' => 'Captain',
+                'name_kh' => 'Unique Test KH',
+                'name_latin' => 'Unique Test',
+                'id_number' => 'DUP-1001',
+                'avatar_image' => UploadedFile::fake()->image('avatar-dup.png', 300, 300),
+                'gender' => 'Male',
+                'position' => 'Operations Officer',
+                'role' => 'Staff',
+                'phone_number' => '012345679',
+                'pob' => 'Phnom Penh',
+                'current_place' => 'Kandal',
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['id_number']);
     }
 
     public function test_team_staff_username_updates_when_latin_name_changes(): void
@@ -1007,6 +1068,8 @@ class RegistrationManagementTest extends TestCase
                 'position' => $staff->position,
                 'role' => $staff->role,
                 'phone_number' => $staff->phone_number,
+                'pob' => 'Phnom Penh',
+                'current_place' => 'Kandal',
             ]);
 
         $response->assertOk()
@@ -1037,6 +1100,8 @@ class RegistrationManagementTest extends TestCase
         Storage::fake('local');
         $staff = $this->createStaffAccount([
             'avatar_path' => 'team-staff/avatar-test-2.jpg',
+            'pob' => 'Phnom Penh',
+            'current_place' => 'Kandal',
         ]);
         Storage::disk('local')->put($staff->avatar_path, 'avatar');
 
@@ -1052,7 +1117,9 @@ class RegistrationManagementTest extends TestCase
 
         $this->get('/staff/profile')
             ->assertOk()
-            ->assertSee($staff->name_latin);
+            ->assertSee($staff->name_latin)
+            ->assertSee('Phnom Penh')
+            ->assertSee('Kandal');
 
         $this->post('/staff/profile/documents', [
             'document_title' => 'Service Letter',

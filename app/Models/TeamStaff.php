@@ -29,6 +29,7 @@ class TeamStaff extends Authenticatable
         'dob',
         'date_of_enlistment',
         'pob',
+        'current_place',
         'training_code',
         'leader_ref',
         'origin_ref',
