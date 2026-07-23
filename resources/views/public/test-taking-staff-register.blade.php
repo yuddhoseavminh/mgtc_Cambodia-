@@ -280,7 +280,7 @@
                                                     <label class="form-label">Upload File(s)</label>
                                                     <div class="space-y-3" data-document-file-list>
                                                         <div class="flex flex-col gap-2 sm:flex-row sm:items-start" data-document-file-row>
-                                                            <input type="file" name="document_files[{{ $documentRequirement->id }}][]" class="public-file-input block w-full min-w-0 flex-1" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.webp" multiple data-document-file-input>
+                                                            <input type="file" name="document_files[{{ $documentRequirement->id }}][]" class="public-file-input block w-full min-w-0 flex-1" accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.bmp,.heic,.heif,.tiff,.tif,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip,.rar,.7z" multiple data-document-file-input>
                                                             <button type="button" class="hidden rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50" data-document-remove-file>Remove</button>
                                                         </div>
                                                     </div>

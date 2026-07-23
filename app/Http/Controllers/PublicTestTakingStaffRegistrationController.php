@@ -7,6 +7,7 @@ use App\Models\TestTakingStaffDocumentRequirement;
 use App\Models\TestTakingStaffRank;
 use App\Models\TestTakingStaffRegistration;
 use App\Support\UploadStorage;
+use GuzzleHttp\Psr7\Utils;
 use Illuminate\Http\Client\Response as HttpResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,6 +30,7 @@ class PublicTestTakingStaffRegistrationController extends Controller
     private const SUCCESS_MESSAGE = 'ការចុះឈ្មោះបុគ្គលិកសាកល្បងបានជោគជ័យ។';
     private const SUCCESS_DESCRIPTION = 'ព័ត៌មានរបស់អ្នកត្រូវបានបញ្ជូនរួចរាល់។ សូមរង់ចាំការត្រួតពិនិត្យពីក្រុមការងារ។';
     private const TOTAL_UPLOAD_ERROR = 'Total upload size is too large. Keep each file at or below 15 MB and total uploads at or below 50 MB.';
+    private const ALLOWED_DOCUMENT_EXTENSIONS = 'pdf,jpg,jpeg,png,webp,gif,bmp,heic,heif,tiff,tif,doc,docx,xls,xlsx,ppt,pptx,csv,txt,zip,rar,7z';
 
     public function store(Request $request): JsonResponse|Response
     {
@@ -58,7 +60,7 @@ class PublicTestTakingStaffRegistrationController extends Controller
 
         foreach ($documentRequirements as $documentRequirement) {
             $rules["document_files.{$documentRequirement->id}"] = ['nullable', 'array'];
-            $rules["document_files.{$documentRequirement->id}.*"] = ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx,webp', 'max:'.self::MAX_SINGLE_FILE_UPLOAD_KILOBYTES];
+            $rules["document_files.{$documentRequirement->id}.*"] = ['file', 'mimes:'.self::ALLOWED_DOCUMENT_EXTENSIONS, 'max:'.self::MAX_SINGLE_FILE_UPLOAD_KILOBYTES];
         }
 
         $validated = $request->validate($rules);
@@ -482,9 +484,9 @@ class PublicTestTakingStaffRegistrationController extends Controller
         ?string $caption = null
     ): HttpResponse {
         $storedPath = (string) ($attachment['path'] ?? '');
-        $resource = $this->openUploadReadStream($storedPath);
+        $contents = $this->readUploadContents($storedPath);
 
-        if (! is_resource($resource)) {
+        if ($contents === null) {
             Log::warning('Telegram test-taking staff attachment missing on disk.', [
                 'registration_id' => $registration->id,
                 'file_path' => $attachment['path'],
@@ -503,13 +505,9 @@ class PublicTestTakingStaffRegistrationController extends Controller
             $payload['caption'] = Str::limit($captionText, 900, '...');
         }
 
-        try {
-            return $this->telegramRequest($forceWithoutVerifying)
-                ->attach('document', $resource, $filename)
-                ->post("https://api.telegram.org/bot{$botToken}/sendDocument", $this->telegramPayload($payload));
-        } finally {
-            $this->closeUploadReadStream($resource);
-        }
+        return $this->telegramRequest($forceWithoutVerifying)
+            ->attach('document', $this->attachableContents($contents), $filename)
+            ->post("https://api.telegram.org/bot{$botToken}/sendDocument", $this->telegramPayload($payload));
     }
 
     private function sendTelegramTextMessage(
@@ -584,14 +582,13 @@ class PublicTestTakingStaffRegistrationController extends Controller
         foreach ($attachments->chunk(10) as $chunk) {
             $request = $this->telegramRequest($forceWithoutVerifying);
             $media = [];
-            $resources = [];
             $validIndex = 0;
 
             foreach ($chunk as $attachment) {
                 $storedPath = (string) ($attachment['path'] ?? '');
-                $resource = $this->openUploadReadStream($storedPath);
+                $contents = $this->readUploadContents($storedPath);
 
-                if (! is_resource($resource)) {
+                if ($contents === null) {
                     Log::warning('Telegram test-taking staff attachment missing on disk.', [
                         'registration_id' => $registration->id,
                         'file_path' => $attachment['path'],
@@ -600,7 +597,7 @@ class PublicTestTakingStaffRegistrationController extends Controller
                 }
 
                 $attachName = 'document_'.$validIndex;
-                $request = $request->attach($attachName, $resource, ($attachment['original_name'] ?? null) ?: basename($storedPath));
+                $request = $request->attach($attachName, $this->attachableContents($contents), ($attachment['original_name'] ?? null) ?: basename($storedPath));
 
                 $mediaItem = [
                     'type' => 'document',
@@ -613,7 +610,6 @@ class PublicTestTakingStaffRegistrationController extends Controller
                 }
 
                 $media[] = $mediaItem;
-                $resources[] = $resource;
                 $validIndex++;
             }
 
@@ -621,19 +617,13 @@ class PublicTestTakingStaffRegistrationController extends Controller
                 continue;
             }
 
-            try {
-                $response = $request->post(
-                    "https://api.telegram.org/bot{$botToken}/sendMediaGroup",
-                    $this->telegramPayload([
-                        'chat_id' => $chatId,
-                        'media' => json_encode($media, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                    ])
-                );
-            } finally {
-                foreach ($resources as $resource) {
-                    $this->closeUploadReadStream($resource);
-                }
-            }
+            $response = $request->post(
+                "https://api.telegram.org/bot{$botToken}/sendMediaGroup",
+                $this->telegramPayload([
+                    'chat_id' => $chatId,
+                    'media' => json_encode($media, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                ])
+            );
 
             $lastResponse = $response;
 
@@ -856,31 +846,26 @@ class PublicTestTakingStaffRegistrationController extends Controller
         return 0;
     }
 
-    /**
-     * @return resource|null
-     */
-    private function openUploadReadStream(?string $path)
+    private function readUploadContents(?string $path): ?string
     {
         if (! filled($path) || ! UploadStorage::exists($path)) {
             return null;
         }
 
-        $stream = UploadStorage::readDisk($path)->readStream($path);
+        $contents = UploadStorage::readDisk($path)->get($path);
 
-        return is_resource($stream) ? $stream : null;
+        return is_string($contents) ? $contents : null;
     }
 
-    private function closeUploadReadStream(mixed $stream): void
+    /**
+     * Laravel's HTTP client drops multipart parts whose 'contents' value is
+     * falsy (it runs the pending file through array_filter). An empty file
+     * would silently vanish from the request, so wrap that one case in a
+     * stream, which array_filter never treats as falsy.
+     */
+    private function attachableContents(string $contents): mixed
     {
-        if (! is_resource($stream)) {
-            return;
-        }
-
-        try {
-            fclose($stream);
-        } catch (\Throwable) {
-            // The HTTP client may already close the stream. Ignore close failures.
-        }
+        return $contents === '' ? Utils::streamFor($contents) : $contents;
     }
 
     /**
